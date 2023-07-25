@@ -3,16 +3,17 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 <!-- PROJECT LOGO -->
+<!--
 <br />
 <div align="center">
   <a href="https://github.com/UniversityOfIdahoCDACS/FANUC-ROS2_Drivers">
     <img src="images/logo.png" alt="Logo TBD" width="80" height="80">
   </a>
-
+-->
 <h3 align="center">FANUC ROS2 Drivers</h3>
 
   <p align="center">
-    ROS2 Drivers for FANUC robots.
+    Release Date: September 2023
     <br />
     <a href="https://github.com/UniversityOfIdahoCDACS/FANUC-ROS2_Drivers"><strong>Explore the docs »</strong></a>
     <br />
