@@ -15,7 +15,9 @@
   <p align="center">
     Release Date: September 2023
     <br />
+    <!--
     <a href="https://github.com/UniversityOfIdahoCDACS/FANUC-ROS2_Drivers"><strong>Explore the docs »</strong></a>
+-->
     <br />
     <br />
   </p>
