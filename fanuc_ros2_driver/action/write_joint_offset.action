@@ -1,0 +1,12 @@
+#Goal
+
+# An integer of what joint to affect 1-6
+int16 joint
+# a value of how far to move in mm
+float32 value
+---
+#Result
+
+bool success
+---
+#Feedback
