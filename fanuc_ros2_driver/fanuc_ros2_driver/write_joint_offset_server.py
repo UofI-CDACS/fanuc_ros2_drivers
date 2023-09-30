@@ -2,8 +2,6 @@
 import sys
 import os
 import rclpy
-
-
 import FANUCethernetipDriver
 
 from robot_controller import robot
