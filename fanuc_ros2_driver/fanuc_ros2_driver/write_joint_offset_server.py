@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 import sys
+import os
 import rclpy
-import FANUCethernetipDriver
+project_dir = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..')) 
+sys.path.append(project_dir)
 
+import FANUCethernetipDriver
 from robot_controller import robot
 from fanuc_ros2_interfaces.action import WriteJointOffset
 from rclpy.node import Node
@@ -12,7 +15,7 @@ FANUCethernetipDriver.DEBUG = False
 
 sys.path.append('./pycomm3/pycomm3')
 
-drive_path = '129.101.98.215'
+drive_path = '129.101.98.214'
 
 
 class write_joint_offset_server(Node):
