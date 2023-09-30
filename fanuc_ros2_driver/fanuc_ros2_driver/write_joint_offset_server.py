@@ -2,10 +2,10 @@
 import sys
 import os
 import rclpy
-project_dir = os.path.abspath(os.path.join(os.path.dirname(__file__),'..','..')) 
-sys.path.append(project_dir)
+
 
 import FANUCethernetipDriver
+
 from robot_controller import robot
 from fanuc_ros2_interfaces.action import WriteJointOffset
 from rclpy.node import Node
