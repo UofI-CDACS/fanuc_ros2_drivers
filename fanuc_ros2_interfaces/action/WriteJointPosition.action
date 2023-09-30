@@ -1,0 +1,12 @@
+#Goal
+
+# An integer of what joing to affect 1-6
+int16 joint
+# A value that represents and angle
+float32 value
+---
+#Result
+
+bool success
+---
+#Feedback
