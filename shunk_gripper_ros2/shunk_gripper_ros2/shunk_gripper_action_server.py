@@ -2,10 +2,12 @@
 import sys
 import os
 import rclpy
+
+sys.path.append("../../dependencies/")
 import FANUCethernetipDriver
 
 from robot_controller import robot
-from fanuc_ros2_interfaces.action import WriteJointPosition
+from fanuc_ros2_interfaces.action import ShunkGripper
 from rclpy.node import Node
 from rclpy.action import ActionServer, GoalResponse
 
@@ -13,19 +15,19 @@ FANUCethernetipDriver.DEBUG = False
 
 sys.path.append('./pycomm3/pycomm3')
 
-#drive_path = '129.101.98.215'
+#drive_path = '129.101.98.214'
 # Robot IP is passed as command line argument 1
 robot_ip = sys.argv[1]
 
 
-class write_joint_position_server(Node):
+class shunk_gripper_server(Node):
     def __init__(self):
-        super().__init__('write_joint_position_server')
+        super().__init__('shunk_gripper_server')
 
-        self.goal = WriteJointPosition.Goal()
+        self.goal = ShunkGripper.Goal()
         self.bot = robot(robot_ip)
 
-        self._action_server = ActionServer(self, WriteJointPosition, 'WriteJointPosition', 
+        self._action_server = ActionServer(self, ShunkGripper, 'ShunkGripper', 
                                         execute_callback = self.execute_callback, 
                                         goal_callback = self.goal_callback)
 
@@ -35,18 +37,13 @@ class write_joint_position_server(Node):
         return GoalResponse.ACCEPT
 
     async def execute_callback(self, goal_handle):
-        joint = self.goal.joint
-        value = self.goal.value
-
-        print('Joint: ', joint)
-        print('Set to angle: ', value)
+        command = self.goal.command
 
         # Goal stuff
-        self.bot.write_joint_position(joint, value)
-        self.bot.start_robot()
+        self.bot.shunk_gripper(command)
 
         goal_handle.succeed()
-        result = WriteJointPosition.Result()
+        result = ShunkGripper.Result()
         result.success = True
         return result
 
@@ -58,11 +55,11 @@ class write_joint_position_server(Node):
 def main(args=None):
     rclpy.init()
 
-    write_joint_position_action_server = write_joint_position_server()
+    shunk_gripper_action_server = shunk_gripper_server()
 
-    rclpy.spin(write_joint_position_action_server)
+    rclpy.spin(shunk_gripper_action_server)
 
-    write_joint_position_action_server.destroy()
+    shunk_gripper_action_server.destroy()
     rclpy.shutdown()
 
 if __name__ == '__main__':

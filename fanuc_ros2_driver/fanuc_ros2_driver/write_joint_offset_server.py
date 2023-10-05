@@ -13,7 +13,9 @@ FANUCethernetipDriver.DEBUG = False
 
 sys.path.append('./pycomm3/pycomm3')
 
-drive_path = '129.101.98.214'
+#drive_path = '129.101.98.214'
+# Robot IP is passed as command line argument 1
+robot_ip = sys.argv[1]
 
 
 class write_joint_offset_server(Node):
@@ -21,7 +23,7 @@ class write_joint_offset_server(Node):
         super().__init__('write_joint_offset_server')
 
         self.goal = WriteJointOffset.Goal()
-        self.bot = robot(drive_path)
+        self.bot = robot(robot_ip)
 
         self._action_server = ActionServer(self, WriteJointOffset, 'WriteJointOffset', 
                                         execute_callback = self.execute_callback, 

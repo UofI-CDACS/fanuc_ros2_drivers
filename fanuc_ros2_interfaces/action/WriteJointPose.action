@@ -1,0 +1,25 @@
+#Goal
+
+# joint 1 angle
+float32 joint1
+
+# joint 2 angle
+float32 joint2
+
+# joint 3 angle
+float32 joint3
+
+# joint 4 angle
+float32 joint4
+
+# joint 5 angle
+float32 joint5
+
+# joint 6 angle
+float32 joint6
+---
+#Result
+
+bool success
+---
+#Feedback

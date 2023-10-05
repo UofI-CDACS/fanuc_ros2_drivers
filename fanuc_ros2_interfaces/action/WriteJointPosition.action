@@ -1,8 +1,8 @@
 #Goal
 
-# An integer of what joing to affect 1-6
+# An integer of what joint to affect 1-6
 int16 joint
-# A value that represents and angle
+# a value of what angle to set joint in degrees
 float32 value
 ---
 #Result

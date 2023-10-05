@@ -14,7 +14,10 @@ find_package(rosidl_default_generators REQUIRED)
 # find_package(<dependency> REQUIRED)
 
 set(action_files
+    "action/WriteJointPosition.action"
     "action/WriteJointOffset.action"
+    "action/ShunkGripper.action"
+    "action/WriteJointPose.action"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}
