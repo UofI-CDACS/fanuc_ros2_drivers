@@ -24,7 +24,7 @@ class write_joint_pose_server(Node):
     def __init__(self):
         super().__init__('write_joint_pose_server')
 
-        self.goal = WriteJointOffset.Goal()
+        self.goal = WriteJointPose.Goal()
         self.bot = robot(robot_ip)
 
         self._action_server = ActionServer(self, WriteJointPose, 'WriteJointPose', 
@@ -37,7 +37,13 @@ class write_joint_pose_server(Node):
         return GoalResponse.ACCEPT
 
     async def execute_callback(self, goal_handle):
-        joint_position_array = self.goal.joint_position_array
+        joint_position_array = []
+        joint_position_array.append(self.goal.joint1)
+        joint_position_array.append(self.goal.joint2)
+        joint_position_array.append(self.goal.joint3)
+        joint_position_array.append(self.goal.joint4)
+        joint_position_array.append(self.goal.joint5)
+        joint_position_array.append(self.goal.joint6)
 
         # Goal stuff
         self.bot.write_joint_pose(joint_position_array)
