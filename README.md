@@ -13,7 +13,7 @@
 <h3 align="center">FANUC ROS2 Drivers</h3>
 
   <p align="center">
-    Release Date: September 2023
+    Release 0.1.0
     <br />
     <!--
     <a href="https://github.com/UniversityOfIdahoCDACS/FANUC-ROS2_Drivers"><strong>Explore the docs »</strong></a>
@@ -68,20 +68,20 @@ ROS2 Solution for FANUC robots
 
 ### Prerequisites
 
-* TBD
+* pycomm
   ```sh
-  TBD
+  pip3 install pycomm
   ```
 
 ### Installation
 
-1. TBD
+1. Create a ROS2 workspace
    ```sh
-   TBD
+   coming soon
    ```
-2. TBD
+2. Clone project
    ```sh
-   TBD
+   coming soon
    ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
@@ -90,7 +90,7 @@ ROS2 Solution for FANUC robots
 <!-- USAGE EXAMPLES -->
 ## Usage
 
-TBD
+Accessible robotics
 
 _For more examples, please refer to the [Documentation](https://example.com)_
 
@@ -99,7 +99,7 @@ _For more examples, please refer to the [Documentation](https://example.com)_
 <!-- ROADMAP -->
 ## Roadmap
 
-- [ ] ROS2 Packages
+- [ ] More ROS2 Packages
 
 See the [open issues](https://github.com/UniversityOfIdahoCDACS/FANUC-Ethernet_IP_Drivers/issues) for a full list of proposed features (and known issues).
 
