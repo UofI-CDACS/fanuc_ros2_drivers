@@ -77,11 +77,11 @@ ROS2 Solution for FANUC robots
 
 1. Create a ROS2 workspace
    ```sh
-   coming soon
+   see ROS2 documentation
    ```
 2. Clone project
    ```sh
-   coming soon
+   https://github.com/UofI-CDACS/fanuc_ros2_drivers.git
    ```
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
