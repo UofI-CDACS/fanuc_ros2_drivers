@@ -121,12 +121,26 @@ ROS2 Solution for FANUC robots
 ## Usage
 
 ## Running Action Server/s
-1. Navigate to desired package
+!Note: Always source when opening new terminal
+1. Open new terminal
+2. Source the overlay
+   ```sh
+   source /opt/ros/humble/setup.bash
+   ```
+   Go into the root of your workspace
+   ```sh
+   cd ~/ros2_ws
+   ```
+   In the root, source the overlay
+   ```sh
+   source install/local_setup.bash
+   ```
+3. Navigate to desired package
    ```sh
    #example:
    cd ~/ros2_ws/src/fanuc_ros2_driver/fanuc_ros2_driver/fanuc_ros2_driver/
    ```
-2. Spin up action servers
+4. Spin up action servers
    ```sh
    #example: pass robot IP
    python3 write_joint_pose_server.py 129.1.1.1
