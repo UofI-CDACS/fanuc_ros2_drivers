@@ -73,24 +73,66 @@ ROS2 Solution for FANUC robots
   pip3 install pycomm
   ```
 
-### Installation
+### Installation (Linux)
 
-1. Create a ROS2 workspace
+#### Create a ROS2 Workspace
+1. Source ROS2 Environment
    ```sh
-   see ROS2 documentation
+   source /opt/ros/humble/setup.bash
    ```
-2. Clone project
+2. Create a new directory
+   ```sh
+   mkdir -p ~/ros2_ws/src
+   cd ~/ros2_ws/src
+   ```
+3. Clone repo
    ```sh
    https://github.com/UofI-CDACS/fanuc_ros2_drivers.git
    ```
-
+4. Resolve Dependencies
+   ```sh
+   # cd if you're still in the ``src`` directory
+   cd ..
+   rosdep install -i --from-path src --rosdistro humble -y
+   ```
+5. Build the workspace with colcon
+   ```sh
+   colcon build
+   ```
+6. Source the overlay
+   ```sh
+   source /opt/ros/humble/setup.bash
+   ```
+   Go into the root of your workspace
+   ```sh
+   cd ~/ros2_ws
+   ```
+   In the root, source the overlay
+   ```sh
+   source install/local_setup.bash
+   ```
+   _Full guide here: [ROS2 Humble Documentation](https://docs.ros.org/en/humble/Tutorials/Beginner-Client-Libraries/Creating-A-Workspace/Creating-A-Workspace.html)_
+   
+   Installation Complete
+   
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
 <!-- USAGE EXAMPLES -->
+
 ## Usage
 
-Accessible robotics
+## Running Action Server/s
+1. Navigate to desired package
+   ```sh
+   #example:
+   cd ~/ros2_ws/src/fanuc_ros2_driver/fanuc_ros2_driver/fanuc_ros2_driver/
+   ```
+2. Spin up action servers
+   ```sh
+   #example: pass robot IP
+   python3 write_joint_pose_server.py 129.1.1.1
+   ```
+   Action server is now waiting to receive goals
+
 
 _For more examples, please refer to the [Documentation](https://example.com)_
 
