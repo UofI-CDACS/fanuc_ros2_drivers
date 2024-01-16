@@ -73,24 +73,52 @@ ROS2 Solution for FANUC robots
   pip3 install pycomm
   ```
 
-### Installation
+### Installation (Linux)
 
-1. Create a ROS2 workspace
+#### Create a ROS2 Workspace
+1. Source ROS2 Environment
    ```sh
-   see ROS2 documentation
+   source /opt/ros/humble/setup.bash
    ```
-2. Clone project
+2. Create a new directory
+   ```sh
+   mkdir -p ~/ros2_ws/
+   cd ~/ros2_ws/
+   ```
+3. Clone repo
    ```sh
    https://github.com/UofI-CDACS/fanuc_ros2_drivers.git
    ```
-
+4. Resolve Dependencies
+   ```sh
+   rosdep install -i --from-path src --rosdistro humble -y
+   ```
+5. Build the workspace with colcon
+   ```sh
+   colcon build
+   ```
+6. Turn script into an executable
+   ```sh
+   chmod +x startRobot.sh
+   ```
+   _Full guide here: [ROS2 Humble Documentation](https://docs.ros.org/en/humble/Tutorials/Beginner-Client-Libraries/Creating-A-Workspace/Creating-A-Workspace.html)_
+   
+   Installation Complete
+   
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
-
-
 <!-- USAGE EXAMPLES -->
+
 ## Usage
 
-Accessible robotics
+## Running Nodes
+1. Open new terminal
+2. Run script
+   ```sh
+   ./startRobot.sh XXX.XXX.XXX.XXX # Fill X's with Robot IP Address
+   ```
+   It should source the overlay and launch all the nodes for you.
+! Note: This script should only be run once per robot! Running multiple times can cause your computer to crash.
+
 
 _For more examples, please refer to the [Documentation](https://example.com)_
 

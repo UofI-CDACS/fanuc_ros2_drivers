@@ -1,0 +1,10 @@
+#Goal
+
+# A string command 'forward', 'reverse' or 'stop'
+string command
+---
+#Result
+
+bool success
+---
+#Feedback

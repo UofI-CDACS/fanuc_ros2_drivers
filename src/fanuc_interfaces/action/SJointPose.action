@@ -1,0 +1,12 @@
+#Goal
+# Set a singlular joint to an specified angle
+
+int16 joint
+float32 angle
+---
+#Result
+# Return final pose?
+bool success
+---
+#Feedback
+float32 distance_left
