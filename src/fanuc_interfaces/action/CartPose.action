@@ -12,7 +12,6 @@ float32 p 200
 float32 r 200
 ---
 #Result
-# Return final pose?
 bool success
 ---
 #Feedback

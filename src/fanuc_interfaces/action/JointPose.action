@@ -10,7 +10,6 @@ float32 joint5
 float32 joint6
 ---
 #Result
-# Return final pose?
 bool success
 ---
 #Feedback
