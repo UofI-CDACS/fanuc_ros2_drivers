@@ -9,7 +9,9 @@ from rclpy.node import Node
 import fanuc_interfaces
 from fanuc_interfaces.srv import Home, Mount, SetSpeed
 
-namespace = 'beaker'
+from time import sleep
+
+namespace = 'bunsen'
 
 class FanucServices(Node):
     def __init__(self, namespace):
@@ -26,8 +28,9 @@ class FanucServices(Node):
         while not self.home_sc.wait_for_service(timeout_sec=1.0):
             pass # Wait for service to be ready
         future = self.home_sc.call_async(request)
-        while not future.done():
-            pass # Wait to be done
+        #while not future.done():
+            #pass # Wait to be done
+        sleep(5)
         print("Home result:",future.result().success)
 
 

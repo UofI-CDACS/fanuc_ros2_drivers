@@ -62,8 +62,8 @@ class robot:
         """! Reads joint position register(PR1) and prints the value and prints list.
         """
         PR_1_Value = FANUCethernetipDriver.readJointPositionRegister(self.robot_IP, self.PRNumber)
-        print("PR[%d]"% self.PRNumber)
-        print("list=", PR_1_Value)
+        #print("PR[%d]"% self.PRNumber)
+        #print("list=", PR_1_Value)
         return PR_1_Value
 
     # write PR[1] offset
@@ -72,16 +72,16 @@ class robot:
         @param joint        which joint to move
         @param value        degrees you want to move, negative or positive direction
         """
-        print("***********************************************")
-        print(f" Write Joint Offset Value:[{value}] to Joint:[{joint}] ")
-        print("***********************************************")
+        #print("***********************************************")
+        #print(f" Write Joint Offset Value:[{value}] to Joint:[{joint}] ")
+        #print("***********************************************")
         joint += 1
 
         newPosition = self.CurJointPosList[joint] + value
-        print(f"New Position value: {newPosition}\n")
+        #print(f"New Position value: {newPosition}\n")
 
         self.CurJointPosList[joint] = newPosition
-        print(self.CurJointPosList[joint])
+        #print(self.CurJointPosList[joint])
 
         myList = self.CurJointPosList
 
@@ -93,11 +93,11 @@ class robot:
         @param joint        which joint to move
         @param value        angle to set joint to from -180 to 180
         """
-        print("--------------------------------")
-        print("| write PR[1] Joint Coordinate |")
-        print("--------------------------------")
-        if value > 179 | value < -179:
-            raise Warning(f"Angle should be in the range of [-179.0, 179.0], got {value}")
+        #print("--------------------------------")
+        #print("| write PR[1] Joint Coordinate |")
+        #print("--------------------------------")
+        if value > 179.9 or value < -179.9:
+            raise Warning(f"Angle should be in the range of [-179.9, 179.9], got {value}")
         
         joint = joint + 1
 
@@ -128,9 +128,9 @@ class robot:
     def set_joints_to_home_position(self):
         """! This used to set a CRX10 into a 'home' position. Not useful for other machines probably
         """
-        print("*************************************************")
-        print("* Setting Joint Positions to Home Configuration *")
-        print("*************************************************")
+        #print("*************************************************")
+        #print("* Setting Joint Positions to Home Configuration *")
+        #print("*************************************************")
 
         # Set positions DO NOT USE 0
         # joint coordinates start at list item 2, ie: Joint2 = CurPosList[3]
@@ -151,12 +151,12 @@ class robot:
     def read_current_cartesian_pose(self) -> list[float]:
         """! Print current cartesian coordinates from robot.
         """
-        print("--------------------------")
-        print("| read CURPOS from Robot |")
-        print("--------------------------")
+        #print("--------------------------")
+        #print("| read CURPOS from Robot |")
+        #print("--------------------------")
         CurPosList = FANUCethernetipDriver.returnCartesianCurrentPostion(self.robot_IP)
 
-        print("CURPOS=", CurPosList)
+        #print("CURPOS=", CurPosList)
         return CurPosList
 
     # write PR[1] Cartesian Coordinates
@@ -172,12 +172,12 @@ class robot:
         @param P            Pitch
         @param R            Roll
         """
-        if W > 179 | W < -179:
-            raise Warning(f"W, P and R should be in the range of [-179.0, 179.0], got {W}")
-        if P > 179 | P < -179:
-            raise Warning(f"W, P and R should be in the range of [-179.0, 179.0], got {P}")
-        if R > 179 | R < -179:
-            raise Warning(f"W, P and R should be in the range of [-179.0, 179.0], got {R}")
+        if W > 179.9 or W < -179.9:
+            raise Warning(f"W, P and R should be in the range of [-179.9, 179.9], got {W}")
+        if P > 179.9 or P < -179.9:
+            raise Warning(f"W, P and R should be in the range of [-179.9, 179.9], got {P}")
+        if R > 179.9 or R < -179.9:
+            raise Warning(f"W, P and R should be in the range of [-179.9, 179.9], got {R}")
         
         self.CurCartesianPosList[2] = X
         self.CurCartesianPosList[3] = Y
@@ -199,7 +199,7 @@ class robot:
         # print("------------------------------")
         # print(f"| Speed set to {value}mm/sec |")
         # print("------------------------------")
-        if value > 300 | value < 0:
+        if value > 300 or value < 0:
             raise Warning(f"Speed should be in the range of [0, 300], got {value}")
         
         FANUCethernetipDriver.writeR_Register(self.robot_IP, self.speed_register, value)
@@ -231,9 +231,9 @@ class robot:
             self.read_current_joint_position()
 
             # Signal end of move action
-            print("********************************************")
-            print("* Moving Joint(s) to Position(s): COMPLETE *")
-            print("********************************************")
+            #print("********************************************")
+            #print("* Moving Joint(s) to Position(s): COMPLETE *")
+            #print("********************************************")
         elif blocking == False:
             pass
 
@@ -259,9 +259,9 @@ class robot:
         """! set the joints to be in a 'mount' position for tooling. 
         This is for CRX10's and will most likely be removed from this API
         """
-        print("**************************************************")
-        print("* Setting Joint Positions to Mount Configuration *")
-        print("**************************************************")
+        #print("**************************************************")
+        #print("* Setting Joint Positions to Mount Configuration *")
+        #print("**************************************************")
 
         # Set positions DO NOT USE 0
         # joint coordinates start at list item 2, ie: Joint2 = CurPosList[3]
@@ -292,14 +292,14 @@ class robot:
         # !! Registers 20 and 23 need to be toggled for opening and closing !!
 
         if command == 'open':
-            print("Opening Gripper...\n")
+            #print("Opening Gripper...\n")
             # set bits to toggle 20 off and 23 on
             FANUCethernetipDriver.writeR_Register(self.robot_IP, 20, 0)
             FANUCethernetipDriver.writeR_Register(self.robot_IP, 23, 1)
             FANUCethernetipDriver.writeR_Register(self.robot_IP, self.sync_register, 1)
 
         elif command == 'close':
-            print("Closing Gripper...\n")
+            #print("Closing Gripper...\n")
             FANUCethernetipDriver.writeR_Register(self.robot_IP, 20, 1)
             FANUCethernetipDriver.writeR_Register(self.robot_IP, 23, 0)
             FANUCethernetipDriver.writeR_Register(self.robot_IP, self.sync_register, 1)

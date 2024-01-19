@@ -32,26 +32,21 @@ class go_home(Node):
         self.bot = robot(robot_ip)
         self.srv = self.create_service(Home, f'{name}/go_home', self.service_callback)
 
-    def service_callback(self, response):
+    def service_callback(self, request, response):
         self.bot.set_joints_to_home_position()
         self.bot.start_robot(blocking=False)
         try:
-            while True: # Verify that it actually completed
-                curPos = self.bot.read_current_joint_position()
-                if (abs(curPos[2] - 1.0) <= 1 and
-                    abs(curPos[3] - 1.0) <= 1 and
-                    abs(curPos[4] - 1.0) <= 1 and
-                    abs(curPos[5] - 1.0) <= 1 and
-                    abs(curPos[6] - 1.0) <= 1 and
-                    abs(curPos[7] - 1.0) <= 1):
-                    break
+            while self.bot.is_moving(): # Verify that it actually completed
+                print("here")
+                pass
         except:
             response.success = False  # If here, there was some kind of error      
         else:
             response.success = True   # Otherwise, evrything went well
         if FANUCethernetipDriver.DEBUG:
             self.get_logger().info('Incoming request result: ',response.success)
-
+	
+        print("HERE")
         return response
 
 

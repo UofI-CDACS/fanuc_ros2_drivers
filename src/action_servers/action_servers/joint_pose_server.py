@@ -104,7 +104,7 @@ class joint_pose_server(Node):
             feedback_msg.distance_left[5] -= self.goal.joint6
             goal_handle.publish_feedback(feedback_msg) # Send value
 
-            feedback_msg.distance_left = self.bot.read_current_joint_pose()[2:8] # Update cur pos
+            feedback_msg.distance_left = self.bot.read_current_joint_position()[2:8] # Update cur pos
 
         goal_handle.succeed()
         result = JointPose.Result()

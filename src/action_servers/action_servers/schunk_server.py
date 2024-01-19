@@ -43,7 +43,7 @@ class schunk_gripper_server(Node):
         self.goal = goal_request 
         
         # Check that it recieved a valid goal
-        if self.goal.command == 'open' or self.goal.command == 'close':
+        if self.goal.command == "open" or self.goal.command == "close":
             return GoalResponse.ACCEPT
         else:
             self.get_logger().info(f'Invalid request, got: {self.goal.command} type: {type(self.goal.command)}')
@@ -86,3 +86,4 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
+

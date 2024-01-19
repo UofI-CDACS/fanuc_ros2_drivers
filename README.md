@@ -111,13 +111,17 @@ ROS2 Solution for FANUC robots
 ## Usage
 
 ## Running Nodes
-1. Open new terminal
+1. Open new terminal and go to workspace
 2. Run script
    ```sh
    ./startRobot.sh XXX.XXX.XXX.XXX # Fill X's with Robot IP Address
    ```
-   It should source the overlay and launch all the nodes for you.
 ! Note: This script should only be run once per robot! Running multiple times can cause your computer to crash.
+3. Open new terminal and go to workspace
+4. Source overlay
+   ```sh
+   source install/setup.sh
+   ```
 
 
 _For more examples, please refer to the [Documentation](https://example.com)_

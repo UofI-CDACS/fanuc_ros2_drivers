@@ -77,7 +77,7 @@ class cart_pose_server(Node):
             goal_handle.canceled()
             return CancelResponse.ACCEPT
 
-    async def execute_callback(self, goal_handle):
+    def execute_callback(self, goal_handle):
         # WIP: Add Try/Except to catch possible errors
         # Create base for feedback
         feedback_msg = CartPose.Feedback()
@@ -103,6 +103,7 @@ class cart_pose_server(Node):
 
             feedback_msg.distance_left = self.bot.read_current_cartesian_pose()[2:8] # Update cur pos
 
+        
         goal_handle.succeed()
         result = CartPose.Result()
         result.success = True
@@ -126,3 +127,4 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
+
