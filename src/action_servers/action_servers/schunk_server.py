@@ -43,10 +43,10 @@ class schunk_gripper_server(Node):
         self.goal = goal_request 
         
         # Check that it recieved a valid goal
-        if self.goal.command == 'open' | self.goal.command == 'close':
+        if self.goal.command == 'open' or self.goal.command == 'close':
             return GoalResponse.ACCEPT
         else:
-            self.get_logger().info('Invalid request')
+            self.get_logger().info(f'Invalid request, got: {self.goal.command} type: {type(self.goal.command)}')
             return GoalResponse.REJECT
                 
     def cancel_callback(self, goal_handle):

@@ -43,7 +43,7 @@ class sjoint_pose_server(Node):
         self.goal = goal_request 
         
         # Check that it recieved a valid goal
-        if self.goal.angle > 179 | self.goal.angle < -179:
+        if self.goal.angle > 179.9 or self.goal.angle < -179.9:
             self.get_logger().info('Invalid request')
             return GoalResponse.REJECT
         else:
@@ -68,11 +68,7 @@ class sjoint_pose_server(Node):
         self.bot.write_joint_position(self.goal.joint, self.goal.angle)
         self.bot.start_robot(blocking=False)
 
-        while True:
-            # Is movement done? WIP: Needs some fine-tuning
-            if (abs(feedback_msg.distance_left - self.goal.angle) <= 1):
-                break
-
+        while self.bot.is_moving():
             # Calculate distance left
             feedback_msg.distance_left -= self.goal.angle
             goal_handle.publish_feedback(feedback_msg) # Send value

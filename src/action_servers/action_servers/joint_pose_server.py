@@ -43,27 +43,27 @@ class joint_pose_server(Node):
         self.goal = goal_request 
         # FIX!! This is ugly.. Put into a list.any()? Switch is also faster
         # Check that it recieved a valid goal
-        if self.goal.joint1 > 179 | self.goal.joint1 < -179:
+        if self.goal.joint1 > 179.9 or self.goal.joint1 < -179.9:
             self.get_logger().info('Invalid request')
             return GoalResponse.REJECT
         
-        elif self.goal.joint2 > 179 | self.goal.joint2 < -179:
+        elif self.goal.joint2 > 179.9 or self.goal.joint2 < -179.9:
             self.get_logger().info('Invalid request')
             return GoalResponse.REJECT
         
-        elif self.goal.joint3 > 179 | self.goal.joint3 < -179:
+        elif self.goal.joint3 > 179.9 or self.goal.joint3 < -179.9:
             self.get_logger().info('Invalid request')
             return GoalResponse.REJECT
         
-        elif self.goal.joint4 > 179 | self.goal.joint4 < -179:
+        elif self.goal.joint4 > 179.9 or self.goal.joint4 < -179.9:
             self.get_logger().info('Invalid request')
             return GoalResponse.REJECT
         
-        elif self.goal.joint5 > 179 | self.goal.joint5 < -179:
+        elif self.goal.joint5 > 179.9 or self.goal.joint5 < -179.9:
             self.get_logger().info('Invalid request')
             return GoalResponse.REJECT
         
-        elif self.goal.joint6 > 179 | self.goal.joint6 < -179:
+        elif self.goal.joint6 > 179.9 or self.goal.joint6 < -179.9:
             self.get_logger().info('Invalid request')
             return GoalResponse.REJECT
         else:
@@ -82,7 +82,7 @@ class joint_pose_server(Node):
     async def execute_callback(self, goal_handle):
         # WIP: Add Try/Except to catch possible error
         feedback_msg = JointPose.Feedback()
-        feedback_msg.distance_left = self.bot.read_current_joint_position() # starting pose
+        feedback_msg.distance_left = self.bot.read_current_joint_position()[2:8] # starting pose
 
         list = [self.goal.joint1,
                 self.goal.joint2,
@@ -94,26 +94,17 @@ class joint_pose_server(Node):
         self.bot.write_joint_pose(list)
         self.bot.start_robot(blocking=False)
 
-        while True:
-            # Is movement done? WIP: Needs some fine-tuning
-            if (abs(feedback_msg.distance_left[2] - self.goal.joint1) <= 1 and
-                abs(feedback_msg.distance_left[3] - self.goal.joint2) <= 1 and
-                abs(feedback_msg.distance_left[4] - self.goal.joint3) <= 1 and
-                abs(feedback_msg.distance_left[5] - self.goal.joint4) <= 1 and
-                abs(feedback_msg.distance_left[6] - self.goal.joint5) <= 1 and
-                abs(feedback_msg.distance_left[7] - self.goal.joint6) <= 1):
-                break
-
+        while self.bot.is_moving():
             # Calculate distance left
-            feedback_msg.distance_left[2] -= self.goal.joint1
-            feedback_msg.distance_left[3] -= self.goal.joint2
-            feedback_msg.distance_left[4] -= self.goal.joint3
-            feedback_msg.distance_left[5] -= self.goal.joint4
-            feedback_msg.distance_left[6] -= self.goal.joint5
-            feedback_msg.distance_left[7] -= self.goal.joint6
+            feedback_msg.distance_left[0] -= self.goal.joint1
+            feedback_msg.distance_left[1] -= self.goal.joint2
+            feedback_msg.distance_left[2] -= self.goal.joint3
+            feedback_msg.distance_left[3] -= self.goal.joint4
+            feedback_msg.distance_left[4] -= self.goal.joint5
+            feedback_msg.distance_left[5] -= self.goal.joint6
             goal_handle.publish_feedback(feedback_msg) # Send value
 
-            feedback_msg.distance_left = self.bot.read_current_cartesian_pose() # Update cur pos
+            feedback_msg.distance_left = self.bot.read_current_joint_pose()[2:8] # Update cur pos
 
         goal_handle.succeed()
         result = JointPose.Result()
