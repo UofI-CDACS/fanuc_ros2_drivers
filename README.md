@@ -116,7 +116,7 @@ ROS2 Solution for FANUC robots
    ```sh
    ./startRobot.sh XXX.XXX.XXX.XXX # Fill X's with Robot IP Address
    ```
-! Note: This script should only be run once per robot! Running multiple times can cause your computer to crash.
+	! Note: This script should only be run once per robot! Running multiple times can cause your computer to crash.
 3. Open new terminal and go to workspace
 4. Source overlay
    ```sh

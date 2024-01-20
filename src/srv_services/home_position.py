@@ -37,16 +37,14 @@ class go_home(Node):
         self.bot.start_robot(blocking=False)
         try:
             while self.bot.is_moving(): # Verify that it actually completed
-                print("here")
                 pass
         except:
             response.success = False  # If here, there was some kind of error      
-        else:
-            response.success = True   # Otherwise, evrything went well
+        
+        response.success = True   # Otherwise, evrything went well
         if FANUCethernetipDriver.DEBUG:
             self.get_logger().info('Incoming request result: ',response.success)
 	
-        print("HERE")
         return response
 
 

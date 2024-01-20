@@ -11,7 +11,12 @@ from fanuc_interfaces.srv import Home, Mount, SetSpeed
 
 from time import sleep
 
-namespace = 'bunsen'
+import sys
+sys.path.append("../src/dependencies/")
+from pynput.keyboard import KeyCode
+from key_commander import KeyCommander
+
+namespace = 'beaker'
 
 class FanucServices(Node):
     def __init__(self, namespace):
@@ -27,11 +32,12 @@ class FanucServices(Node):
         request = Home.Request()
         while not self.home_sc.wait_for_service(timeout_sec=1.0):
             pass # Wait for service to be ready
-        future = self.home_sc.call_async(request)
+        result = self.home_sc.call(request)
         #while not future.done():
             #pass # Wait to be done
-        sleep(5)
-        print("Home result:",future.result().success)
+        # sleep(5)
+        # print("Home result:",future.result().success)
+        print("Home result:",result)
 
 
         # Mount position
@@ -41,7 +47,7 @@ class FanucServices(Node):
         future = self.mount_sc.call_async(request)
         while not future.done():
             pass # Wait to be done
-        print("Home result:",future.result().success)
+        print("Mount result:",future.result().success)
 
 
         # Set Speed
@@ -52,7 +58,7 @@ class FanucServices(Node):
         future = self.speed_sc.call_async(request)
         while not future.done():
             pass # Wait to be done
-        print("Home result:",future.result().success)
+        print("Speed result:",future.result().success)
 
         
 
@@ -61,6 +67,10 @@ if __name__ == '__main__':
     rclpy.init()
 	
     fanuc = FanucServices(namespace)
-	
-    rclpy.spin_until_future_complete(fanuc, fanuc.run_test())
+
+    keycom = KeyCommander([
+		(KeyCode(char='s'), fanuc.run_test),
+		])
+    print("S")
+    rclpy.spin(fanuc)
     rclpy.shutdown()

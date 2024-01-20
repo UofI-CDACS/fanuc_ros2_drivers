@@ -33,7 +33,7 @@ class set_speed(Node):
 
     def service_callback(self, request, response):
         if request.speed >= 0 and request.speed <= 300:
-            self.bot.set_speed()
+            self.bot.set_speed(request.speed)
             response.success = True 
         else:
             response.success = False
