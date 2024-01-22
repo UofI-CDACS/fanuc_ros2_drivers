@@ -35,7 +35,7 @@ set(action_files
 )
 
 set(msg_files
-   "msg/CurCartiesian.msg"
+   "msg/CurCartesian.msg"
    "msg/CurGripper.msg"
    "msg/CurJoints.msg"
    "msg/IsMoving.msg"

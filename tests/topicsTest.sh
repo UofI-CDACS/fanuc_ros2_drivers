@@ -11,7 +11,7 @@ fi
 # for each name given
 for i in "$@"
 do
-    ros2 topic echo --once /$i/cur_cartiesian
+    ros2 topic echo --once /$i/cur_cartesian
     ros2 topic echo --once /$i/cur_joints
     #ros2 topic echo --once /$i/grip_status # This one currently does not publish anything
     ros2 topic echo --once /$i/is_moving

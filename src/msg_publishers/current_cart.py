@@ -7,7 +7,7 @@ sys.path.append("src/dependencies/")
 import FANUCethernetipDriver
 
 from robot_controller import robot
-from fanuc_interfaces.msg import CurCartiesian
+from fanuc_interfaces.msg import CurCartesian
 from rclpy.node import Node
 
 FANUCethernetipDriver.DEBUG = False
@@ -25,16 +25,16 @@ elif robot_ip == '172.29.208.123':
 else:
 	name = "rogue"
 
-class current_cartiesian(Node):
+class current_cartesian(Node):
     def __init__(self):
         super().__init__('cur_cart')
         self.bot = robot(robot_ip)
-        self.publisher_ = self.create_publisher(CurCartiesian, f'{name}/cur_cartiesian', 10)
+        self.publisher_ = self.create_publisher(CurCartesian, f'{name}/cur_cartesian', 10)
         timer_period = 0.5
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
     def timer_callback(self):
-        msg = CurCartiesian()                                          
+        msg = CurCartesian()                                          
         msg.pose = self.bot.read_current_cartesian_pose()[2:8]  # The first 2 bits don't hold positional data                                  
         self.publisher_.publish(msg)
         if FANUCethernetipDriver.DEBUG:
@@ -44,7 +44,7 @@ class current_cartiesian(Node):
 def main(args=None):
     rclpy.init(args=args)
 
-    publisher = current_cartiesian()
+    publisher = current_cartesian()
 
     rclpy.spin(publisher)
 
