@@ -16,27 +16,24 @@ FANUCethernetipDriver.DEBUG = False
 sys.path.append('./pycomm3/pycomm3')
 
 # Robot IP is passed as command line argument 1
-# robot_ip = sys.argv[1]
+robot_ip = sys.argv[1]
 
 # Quick and dirty
-# if robot_ip == '172.29.208.124':
-# 	name = "beaker"
-# elif robot_ip == '172.29.208.123':
-#      name = "bunsen"
-# else:
-# 	name = "rogue"
+if robot_ip == '172.29.208.124':
+	name = "beaker"
+elif robot_ip == '172.29.208.123':
+     name = "bunsen"
+else:
+	name = "rogue"
 
 class cart_pose_server(Node):
     def __init__(self):
         super().__init__('cart_pose_server')
 
-        self.declare_parameter('robot_ip', rclpy.Parameter.Type.STRING) 
-        robot_ip = self.get_parameter('robot_ip').get_parameter_value().string_value
-
         self.goal = CartPose.Goal()
         self.bot = robot(robot_ip)
 
-        self._action_server = ActionServer(self, CartPose, f'/cartesian_pose', 
+        self._action_server = ActionServer(self, CartPose, f'{name}/cartesian_pose', 
                                         execute_callback = self.execute_callback, 
                                         goal_callback = self.goal_callback,
                                         cancel_callback = self.cancel_callback)

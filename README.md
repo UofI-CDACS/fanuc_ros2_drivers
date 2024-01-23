@@ -97,7 +97,10 @@ ROS2 Solution for FANUC robots
    ```sh
    colcon build
    ```
-
+6. Turn script into an executable
+   ```sh
+   chmod +x startRobot.sh
+   ```
    _Full guide here: [ROS2 Humble Documentation](https://docs.ros.org/en/humble/Tutorials/Beginner-Client-Libraries/Creating-A-Workspace/Creating-A-Workspace.html)_
    
    Installation Complete
@@ -109,22 +112,16 @@ ROS2 Solution for FANUC robots
 
 ## Running Nodes
 1. Open new terminal and go to workspace
-2. Source overlay
+2. Run script
+   ```sh
+   ./startRobot.sh XXX.XXX.XXX.XXX # Fill X's with Robot IP Address
+   ```
+	! Note: This script should only be run once per robot! Running multiple times can cause your computer to crash.
+3. Open new terminal and go to workspace
+4. Source overlay
    ```sh
    source install/setup.sh
    ```
-3. Run launch file to start nodes
-   ```sh
-   cd launch
-   ros2 launch start.launch.py XXX.XXX.XXX.XXX NAME_OF_ROBOT 
-   ```
-   Fill X's with Robot IP Address and add robot name. This only works for 1 robot at a time
-4. Open new terminal and go to workspace
-5. Source overlay
-   ```sh
-   source install/setup.sh
-   ```
-6. Run your program
 
 
 _For more examples, please refer to the [Documentation](https://example.com)_

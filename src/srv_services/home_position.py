@@ -15,26 +15,22 @@ FANUCethernetipDriver.DEBUG = False
 sys.path.append('./pycomm3/pycomm3')
 
 # Robot IP is passed as command line argument 1
-# robot_ip = sys.argv[1]
+robot_ip = sys.argv[1]
 
-# # Quick and dirty
-# if robot_ip == '172.29.208.124':
-# 	name = "beaker"
-# elif robot_ip == '172.29.208.123':
-#      name = "bunsen"
-# else:
-# 	name = "rogue"
+# Quick and dirty
+if robot_ip == '172.29.208.124':
+	name = "beaker"
+elif robot_ip == '172.29.208.123':
+     name = "bunsen"
+else:
+	name = "rogue"
      
     
 class go_home(Node):
     def __init__(self):
         super().__init__('home_srv')
-
-        self.declare_parameter('robot_ip', rclpy.Parameter.Type.STRING) 
-        robot_ip = self.get_parameter('robot_ip').get_parameter_value().string_value
-
         self.bot = robot(robot_ip)
-        self.srv = self.create_service(Home, f'/go_home', self.service_callback)
+        self.srv = self.create_service(Home, f'{name}/go_home', self.service_callback)
 
     def service_callback(self, request, response):
         self.bot.set_joints_to_home_position()
