@@ -16,14 +16,15 @@ sys.path.append('./pycomm3/pycomm3')
 
 # Robot IP is passed as command line argument 1
 robot_ip = sys.argv[1]
+name = sys.argv[2]
 
-# Quick and dirty
-if robot_ip == '172.29.208.124':
-	name = "beaker"
-elif robot_ip == '172.29.208.123':
-     name = "bunsen"
-else:
-	name = "rogue"
+# # Quick and dirty
+# if robot_ip == '172.29.208.124':
+# 	name = "beaker"
+# elif robot_ip == '172.29.208.123':
+#      name = "bunsen"
+# else:
+# 	name = "rogue"
 
 class current_joint(Node):
     def __init__(self):

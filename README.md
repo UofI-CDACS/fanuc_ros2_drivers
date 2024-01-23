@@ -114,14 +114,16 @@ ROS2 Solution for FANUC robots
 1. Open new terminal and go to workspace
 2. Run script
    ```sh
-   ./startRobot.sh XXX.XXX.XXX.XXX # Fill X's with Robot IP Address
+   ./startRobot.sh XXX.XXX.XXX.XXX ROBOT_NAME # Fill X's with Robot IP Address and name
    ```
 	! Note: This script should only be run once per robot! Running multiple times can cause your computer to crash.
+  - This script only works for one robot. If you need to start more than 1 robot, this should be done in mulitple terminals.
 3. Open new terminal and go to workspace
 4. Source overlay
    ```sh
    source install/setup.sh
    ```
+5. Start using!
 
 
 _For more examples, please refer to the [Documentation](https://example.com)_
