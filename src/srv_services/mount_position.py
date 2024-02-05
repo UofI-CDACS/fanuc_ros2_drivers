@@ -33,17 +33,16 @@ class go_mount(Node):
         self.srv = self.create_service(Mount, f'{name}/go_mount', self.service_callback)
 
     def service_callback(self, request, response):
-        self.bot.set_joints_to_mount_position()
-        self.bot.start_robot(blocking=False)
+        self.bot.set_joints_to_mount_position(blocking=False)
         try:
             while True: # Verify that it actually completed
                 curPos = self.bot.read_current_joint_position()
-                if (abs(curPos[2] - 1.0) <= 2 and
-                    abs(curPos[3] - 58.0) <= 2 and
-                    abs(curPos[4] - -12.0) <= 2 and
-                    abs(curPos[5] - -2.0) <= 2 and
-                    abs(curPos[6] - 11.0) <= 2 and
-                    abs(curPos[7] - -6.0) <= 2):
+                if (abs(curPos[0] - 1.0) <= 2 and
+                    abs(curPos[1] - 58.0) <= 2 and
+                    abs(curPos[2] - -12.0) <= 2 and
+                    abs(curPos[3] - -2.0) <= 2 and
+                    abs(curPos[4] - 11.0) <= 2 and
+                    abs(curPos[5] - -6.0) <= 2):
                     break
         except:
             response.success = False  # If here, there was some kind of error      

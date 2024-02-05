@@ -23,23 +23,10 @@ class FanucServices(Node):
         super().__init__("robot")
 		
 		# Services
-        self.home_sc = self.create_client(Home, f'{namespace}/go_home')
         self.mount_sc = self.create_client(Mount, f'{namespace}/go_mount')
         self.speed_sc = self.create_client(SetSpeed, f'{namespace}/set_speed')
 		
     def run_test(self):
-        # Home position
-        request = Home.Request()
-        while not self.home_sc.wait_for_service(timeout_sec=1.0):
-            pass # Wait for service to be ready
-        result = self.home_sc.call(request)
-        #while not future.done():
-            #pass # Wait to be done
-        # sleep(5)
-        # print("Home result:",future.result().success)
-        print("Home result:",result)
-
-
         # Mount position
         request = Mount.Request()
         while not self.mount_sc.wait_for_service(timeout_sec=1.0):
@@ -61,7 +48,7 @@ class FanucServices(Node):
         print("Speed result:",future.result().success)
 
         
-
+raise DeprecationWarning
 
 if __name__ == '__main__':
     rclpy.init()

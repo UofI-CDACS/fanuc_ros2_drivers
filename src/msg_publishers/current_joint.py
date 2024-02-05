@@ -36,8 +36,7 @@ class current_joint(Node):
 
     def timer_callback(self):
         msg = CurJoints()                                  
-        msg.joints = self.bot.read_current_joint_position()[2:8]  # The first 2 bits don't hold positional data        
-        self.publisher_.publish(msg)
+        msg.joints = self.bot.read_current_joint_position()
         if FANUCethernetipDriver.DEBUG:
         	self.get_logger().info('Publishing: ' % msg.joints)
 

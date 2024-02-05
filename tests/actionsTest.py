@@ -92,6 +92,7 @@ class FanucActions(Node):
         schunk_goal = SchunkGripper.Goal()
         schunk_goal.command = 'open'
         self.schunk_ac.send_goal(schunk_goal)
+        sleep(5)
         print("Test 2")
         schunk_goal = SchunkGripper.Goal()
         schunk_goal.command = 'close'

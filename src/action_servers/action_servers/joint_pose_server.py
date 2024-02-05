@@ -83,7 +83,7 @@ class joint_pose_server(Node):
     async def execute_callback(self, goal_handle):
         # WIP: Add Try/Except to catch possible error
         feedback_msg = JointPose.Feedback()
-        feedback_msg.distance_left = self.bot.read_current_joint_position()[2:8] # starting pose
+        feedback_msg.distance_left = self.bot.read_current_joint_position() # starting pose
 
         list = [self.goal.joint1,
                 self.goal.joint2,
@@ -92,8 +92,7 @@ class joint_pose_server(Node):
                 self.goal.joint5,
                 self.goal.joint6]
         
-        self.bot.write_joint_pose(list)
-        self.bot.start_robot(blocking=False)
+        self.bot.write_joint_pose(list, blocking=False)
 
         while self.bot.is_moving():
             # Calculate distance left
@@ -105,7 +104,7 @@ class joint_pose_server(Node):
             feedback_msg.distance_left[5] -= self.goal.joint6
             goal_handle.publish_feedback(feedback_msg) # Send value
 
-            feedback_msg.distance_left = self.bot.read_current_joint_position()[2:8] # Update cur pos
+            feedback_msg.distance_left = self.bot.read_current_joint_position() # Update cur pos
 
         goal_handle.succeed()
         result = JointPose.Result()

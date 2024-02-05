@@ -35,7 +35,6 @@ commands[$((command_count++))]='python3 src/msg_publishers/current_joint.py '$1 
 commands[$((command_count++))]='python3 src/msg_publishers/move_check.py '$1 $2
 commands[$((command_count++))]='python3 src/msg_publishers/prox_check.py '$1 $2
 commands[$((command_count++))]='python3 src/msg_publishers/speed_check.py '$1 $2
-commands[$((command_count++))]='python3 src/srv_services/home_position.py '$1 $2
 commands[$((command_count++))]='python3 src/srv_services/mount_position.py '$1 $2
 commands[$((command_count))]='python3 src/srv_services/set_speed.py '$1 $2
 # These will all run in the background

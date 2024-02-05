@@ -36,7 +36,7 @@ class current_cartesian(Node):
 
     def timer_callback(self):
         msg = CurCartesian()                                          
-        msg.pose = self.bot.read_current_cartesian_pose()[2:8]  # The first 2 bits don't hold positional data                                  
+        msg.pose = self.bot.read_current_cartesian_pose()                                  
         self.publisher_.publish(msg)
         if FANUCethernetipDriver.DEBUG:
         	self.get_logger().info('Publishing: ' % msg.pose)

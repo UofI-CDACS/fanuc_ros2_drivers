@@ -35,9 +35,10 @@ class check_grip(Node):
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
     def timer_callback(self):
-        msg = CurGripper()                                          
+        msg = CurGripper()     
+        msg.open = False  # TEMPORARY!!!                            
         # msg.open = self.bot.grip_status() # doesn't exist YET                                    
-        # self.publisher_.publish(msg)
+        self.publisher_.publish(msg)
         # if FANUCethernetipDriver.DEBUG:
         # 	self.get_logger().info('Publishing: ' % msg.open)
 

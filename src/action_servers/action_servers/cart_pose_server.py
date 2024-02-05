@@ -46,21 +46,21 @@ class cart_pose_server(Node):
         # Check that it recieved a valid goal
         if self.goal.w > 179.9 or self.goal.w < -179.9:
             if self.goal.w == 200:
-                self.goal.w = self.bot.read_current_cartesian_pose()[5]
+                self.goal.w = self.bot.read_current_cartesian_pose()[3]
             else:
                 self.get_logger().info('Invalid request, W needs to be in the range of [-179.9,179.9]')
                 return GoalResponse.REJECT
         
         if self.goal.p > 179.9 or self.goal.p < -179.9:
             if self.goal.p == 200:
-                self.goal.p = self.bot.read_current_cartesian_pose()[6]
+                self.goal.p = self.bot.read_current_cartesian_pose()[4]
             else:
                 self.get_logger().info('Invalid request, P needs to be in the range of [-179.9,179.9]')
                 return GoalResponse.REJECT
         
         if self.goal.r > 179.9 or self.goal.r < -179.9:
             if self.goal.r == 200:
-                self.goal.r = self.bot.read_current_cartesian_pose()[7]
+                self.goal.r = self.bot.read_current_cartesian_pose()[5]
             else:
                 self.get_logger().info('Invalid request, R needs to be in the range of [-179.9,179.9]')
                 return GoalResponse.REJECT
@@ -82,15 +82,15 @@ class cart_pose_server(Node):
         # WIP: Add Try/Except to catch possible errors
         # Create base for feedback
         feedback_msg = CartPose.Feedback()
-        feedback_msg.distance_left = self.bot.read_current_cartesian_pose()[2:8] # starting pose
+        feedback_msg.distance_left = self.bot.read_current_cartesian_pose() # starting pose
 
-        self.bot.write_cartesian_position(self.goal.x,
+        self.bot.write_cartesian_position([self.goal.x,
                                           self.goal.y,
                                           self.goal.z,
                                           self.goal.w, 
                                           self.goal.p,
-                                          self.goal.r)
-        self.bot.start_robot(blocking=False)
+                                          self.goal.r],
+                                          blocking=False)
 
         while self.bot.is_moving():
             # Calculate distance left
@@ -102,7 +102,7 @@ class cart_pose_server(Node):
             feedback_msg.distance_left[5] -= self.goal.r
             goal_handle.publish_feedback(feedback_msg) # Send value
 
-            feedback_msg.distance_left = self.bot.read_current_cartesian_pose()[2:8] # Update cur pos
+            feedback_msg.distance_left = self.bot.read_current_cartesian_pose() # Update cur pos
 
         
         goal_handle.succeed()

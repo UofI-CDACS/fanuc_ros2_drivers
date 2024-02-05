@@ -47,6 +47,9 @@ class sjoint_pose_server(Node):
         if self.goal.angle > 179.9 or self.goal.angle < -179.9:
             self.get_logger().info('Invalid request')
             return GoalResponse.REJECT
+        if self.goal.joint < 0 or self.goal.joint > 6:
+            self.get_logger().info('Invalid request')
+            return GoalResponse.REJECT
         else:
             return GoalResponse.ACCEPT
                 
@@ -63,19 +66,16 @@ class sjoint_pose_server(Node):
     async def execute_callback(self, goal_handle):
         # WIP: Add Try/Except to catch possible error
         feedback_msg = SJointPose.Feedback()
-        temp = self.bot.read_current_joint_position()
-        feedback_msg.distance_left = temp[self.goal.joint + 1] # starting pose
+        feedback_msg.distance_left = self.bot.read_current_joint_position()[self.goal.joint - 1] # starting pose
         
-        self.bot.write_joint_position(self.goal.joint, self.goal.angle)
-        self.bot.start_robot(blocking=False)
+        self.bot.write_joint_position(self.goal.joint, self.goal.angle, blocking=False)
 
         while self.bot.is_moving():
             # Calculate distance left
             feedback_msg.distance_left -= self.goal.angle
             goal_handle.publish_feedback(feedback_msg) # Send value
 
-            temp = self.bot.read_current_joint_position()
-            feedback_msg.distance_left = temp[self.goal.joint + 1] # Update cur pos
+            feedback_msg.distance_left = self.bot.read_current_joint_position()[self.goal.joint - 1] # Update cur pos
 
 
         goal_handle.succeed()
