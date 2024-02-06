@@ -16,7 +16,7 @@ sys.path.append("../src/dependencies/")
 from pynput.keyboard import KeyCode
 from key_commander import KeyCommander
 
-namespace = 'beaker'
+namespace = 'bunsen'
 
 class FanucServices(Node):
     def __init__(self, namespace):
@@ -27,10 +27,12 @@ class FanucServices(Node):
         self.speed_sc = self.create_client(SetSpeed, f'{namespace}/set_speed')
 		
     def run_test(self):
+        print("Mount test")
         # Mount position
         request = Mount.Request()
         while not self.mount_sc.wait_for_service(timeout_sec=1.0):
             pass # Wait for service to be ready
+        print("Service ready, sending request")
         future = self.mount_sc.call_async(request)
         while not future.done():
             pass # Wait to be done
@@ -38,10 +40,12 @@ class FanucServices(Node):
 
 
         # Set Speed
+        print("Speed test")
         request = SetSpeed.Request()
         request.speed = 250
         while not self.speed_sc.wait_for_service(timeout_sec=1.0):
             pass # Wait for service to be ready
+        print("Service ready, sending request")
         future = self.speed_sc.call_async(request)
         while not future.done():
             pass # Wait to be done
