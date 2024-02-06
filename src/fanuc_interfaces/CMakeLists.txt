@@ -44,7 +44,6 @@ set(msg_files
 )
 
 set(srv_files
-   "srv/Home.srv"
    "srv/Mount.srv"
    "srv/SetSpeed.srv"
 )

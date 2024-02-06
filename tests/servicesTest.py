@@ -7,7 +7,7 @@ from rclpy.node import Node
 
 # Fanuc packages
 import fanuc_interfaces
-from fanuc_interfaces.srv import Home, Mount, SetSpeed
+from fanuc_interfaces.srv import Mount, SetSpeed
 
 from time import sleep
 
@@ -47,8 +47,6 @@ class FanucServices(Node):
             pass # Wait to be done
         print("Speed result:",future.result().success)
 
-        
-raise DeprecationWarning
 
 if __name__ == '__main__':
     rclpy.init()
