@@ -28,6 +28,7 @@ commands[$((command_count++))]='python3 src/action_servers/action_servers/cart_p
 commands[$((command_count++))]='python3 src/action_servers/action_servers/convey_server.py '$1' '$2
 commands[$((command_count++))]='python3 src/action_servers/action_servers/joint_pose_server.py '$1' '$2
 commands[$((command_count++))]='python3 src/action_servers/action_servers/schunk_server.py '$1' '$2
+commands[$((command_count++))]='python3 src/action_servers/action_servers/onrobot_server.py '$1' '$2
 commands[$((command_count++))]='python3 src/action_servers/action_servers/single_joint_server.py '$1' '$2
 commands[$((command_count++))]='python3 src/msg_publishers/current_grip.py '$1' '$2
 commands[$((command_count++))]='python3 src/msg_publishers/current_cart.py '$1' '$2

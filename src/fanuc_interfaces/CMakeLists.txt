@@ -28,6 +28,7 @@ endif()
 
 set(action_files
   "action/SchunkGripper.action"
+  "action/OnRobotGripper.action"
   "action/CartPose.action"
   "action/JointPose.action"
   "action/SJointPose.action"

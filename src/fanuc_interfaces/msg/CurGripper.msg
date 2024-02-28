@@ -1,4 +1,3 @@
-# Message contains the current status of the gripper
-# WIP: Not implemented YET, Will return False!!
+# Message contains the current status of the schunk gripper (NOT FOR OnRobot!!)
 
 bool open # Wether or not the gripper is open

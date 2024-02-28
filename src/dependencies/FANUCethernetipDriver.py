@@ -556,7 +556,65 @@ def readDigitalOutputs(drive_path):
         if (DEBUG == True):
           print("myList=", myList) 
         return myList
-  
+
+
+
+def readRobotInputs(drive_path):
+  """
+  Read in all the Robot Input (RI[]) Registers
+  NOTE: This is not the same as a Digital Input ( DI[] ) Register!! Check that you are reading the correct register type.
+  """
+  # read all Robot Inputs 0x327
+  with CIPDriver(drive_path) as drive:
+        myTag = drive.generic_message(
+            service=Services.get_attribute_single, # 0x0E
+            class_code=0x04,
+            instance=0x327,
+            attribute=0x03,
+            data_type=None,
+            connected=False,
+            unconnected_send=False,
+            route_path=False,
+            name='fanucRIread'
+        )
+        if (DEBUG == True):
+          print("Robot Input 0x327")
+          print(myTag)
+          print("myTag.type=", myTag.type)
+        myList = list(myTag.value)
+        if (DEBUG == True):
+          print("myList=", myList) 
+        return myList
+
+
+
+def readRobotOutputs(drive_path):
+  """
+  Read in all the Robot Input (RO[]) Registers
+  NOTE: This is not the same as a Digital Output ( DO[] ) Register!! Check that you are reading the correct register type.
+  """
+  # read all Robot Outputs 0x328
+  with CIPDriver(drive_path) as drive:
+        myTag = drive.generic_message(
+            service=Services.get_attribute_single, # 0x0E
+            class_code=0x04,
+            instance=0x328,
+            attribute=0x03,
+            data_type=None,
+            connected=False,
+            unconnected_send=False,
+            route_path=False,
+            name='fanucROread'
+        )
+        if (DEBUG == True):
+          print("Robot Output 0x328")
+          print(myTag)
+          print("myTag.type=", myTag.type)
+        myList = list(myTag.value)
+        if (DEBUG == True):
+          print("myList=", myList) 
+        return myList
+
 
 
 def readDigitalInput(drive_path, InputNumber):
@@ -584,6 +642,7 @@ def readDigitalInput(drive_path, InputNumber):
   return value
 
 
+
 def readDigitalOutput(drive_path, OutputNumber):
   '''
   Read one digital output value (I.E. Read the value at DO[1])
@@ -607,7 +666,60 @@ def readDigitalOutput(drive_path, OutputNumber):
   #print("Full Register:",outputs[register])
   print("Value:", value)
   return value
-   
+
+
+
+def readRobotInput(drive_path, InputNumber):
+  '''
+  Read one robot input value (I.E. Read the value at RI[1])
+  NOTE: This is not the same as a Digital Input ( DI[] ) Register!! Check that you are reading the correct register type.
+
+  :param str drive-path: IP location of the robot
+  :param int InputNumber: Robot Input (RI) you want to read
+  :return: Value at RI[ InputNumber ]
+  :rtype: int (1 or 0)
+
+  :raises ValueError: if InputNumber <= 0 or InputNumber > 8
+  '''
+  if not InputNumber or InputNumber > 8: # If Input is 0
+    raise ValueError(f"Cannot select {InputNumber}-th register, does not exist")
+
+  inputs = readRobotInputs(drive_path) # Read in all registers
+  register = ((InputNumber-1)//8) # What register block the input is in
+  value = inputs[register] >> ((InputNumber-1)  % 8) # Get the value at the input position requested and whatever is to the right
+  value = value &1 # Truncate to just the position
+  #print("Register Num:",register)
+  #print("Full Register:",inputs[register])
+  print("Value:", value)
+  return value   
+
+
+
+def readRobotOutput(drive_path, OutputNumber):
+  '''
+  Read one robot output value (I.E. Read the value at RO[1])
+  NOTE: This is not the same as a Digital Output ( DO[] ) Register!! Check that you are reading the correct register type.
+
+  :param str drive-path: IP location of the robot
+  :param int OutputNumber: Robot Output (RO) you want to read
+  :return: Value at RO[ OutputNumber ]
+  :rtype: int (1 or 0)
+
+  :raises ValueError: if OutputNumber <= 0 or OutputNumber > 8
+  '''
+  if not OutputNumber or OutputNumber > 8: # If Input is 0
+    raise ValueError(f"Cannot select {OutputNumber}-th register, does not exist")
+
+  inputs = readRobotInputs(drive_path) # Read in all registers
+  register = ((OutputNumber-1)//8) # What register block the input is in
+  value = inputs[register] >> ((OutputNumber-1)  % 8) # Get the value at the input position requested and whatever is to the right
+  value = value &1 # Truncate to just the position
+  #print("Register Num:",register)
+  #print("Full Register:",inputs[register])
+  print("Value:", value)
+  return value   
+
+
 
 def writeDigitalInput(drive_path, OutputNumber, Value):
   """

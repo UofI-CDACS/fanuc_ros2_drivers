@@ -45,21 +45,21 @@ class cart_pose_server(Node):
         
         # Check that it recieved a valid goal
         if self.goal.w > 179.9 or self.goal.w < -179.9:
-            if self.goal.w == 200:
+            if self.goal.w == 200.0:
                 self.goal.w = self.bot.read_current_cartesian_pose()[3]
             else:
                 self.get_logger().info('Invalid request, W needs to be in the range of [-179.9,179.9]')
                 return GoalResponse.REJECT
         
         if self.goal.p > 179.9 or self.goal.p < -179.9:
-            if self.goal.p == 200:
+            if self.goal.p == 200.0:
                 self.goal.p = self.bot.read_current_cartesian_pose()[4]
             else:
                 self.get_logger().info('Invalid request, P needs to be in the range of [-179.9,179.9]')
                 return GoalResponse.REJECT
         
         if self.goal.r > 179.9 or self.goal.r < -179.9:
-            if self.goal.r == 200:
+            if self.goal.r == 200.0:
                 self.goal.r = self.bot.read_current_cartesian_pose()[5]
             else:
                 self.get_logger().info('Invalid request, R needs to be in the range of [-179.9,179.9]')

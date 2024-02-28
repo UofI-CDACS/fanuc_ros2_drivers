@@ -15,7 +15,7 @@
 # @section author_robot_controller Authors(s)
 # - Original Code by John Shovic
 # - Modified by James Lasso on 6/12/2023
-# - Modified by Kris Olds on 2/1/2024
+# - Modified by Kris Olds on 2/28/2024
 #
 
 # Imports
@@ -109,6 +109,16 @@ class robot:
         """! Set a pose(all joint positions) for robot
         @param joint_position_array         a list of joint angles 
         """
+        if isinstance(joint_position_array[0], list):
+            # If the first element is a list (making array a list of lists of positions to all be run one after another)
+            # Check that all elements in the list are also lists
+            if all(isinstance(x, list) for x in joint_position_array):
+                for jlist in joint_position_array:
+                    self.write_joint_pose(jlist, blocking=blocking) # Loop through all coords in list and run them.
+            else:
+                raise Warning("If passing a list of lists, all elements must be lists!")
+            
+
         joint_number = 1
         for joint in joint_position_array:
             self.CurJointPosList[joint_number + 1] = joint_position_array[joint_number - 1]
@@ -117,29 +127,6 @@ class robot:
         FANUCethernetipDriver.writeJointPositionRegister(self.robot_IP, self.PRNumber, self.CurJointPosList)
         self.start_robot(blocking=blocking)
         
-
-    # Put robot in home position
-    def set_joints_to_home_position(self, blocking:bool=True):
-        """! This used to set a CRX10 into a 'home' position. Not useful for other machines probably.
-        Will be removed in the future!
-        """
-        print("Deperication Warning: This function causes the robot to get stuck in a 'singilarity', will be removed in future update; currently will do nothing. ")
-        return 
-        print("*************************************************")
-        print("* Setting Joint Positions to Home Configuration *")
-        print("*************************************************")
-
-        # Set positions DO NOT USE 0
-        # joint coordinates start at list item 2, ie: Joint2 = CurPosList[3]
-        self.CurJointPosList[2] = 1.0 # J1
-        self.CurJointPosList[3] = 1.0 # J2
-        self.CurJointPosList[4] = 1.0 # J3
-        self.CurJointPosList[5] = 1.0 # J4
-        self.CurJointPosList[6] = 1.0 # J5 PB50IB does not like this join, OK on CRX10
-        self.CurJointPosList[7] = 1.0 # J6
-
-        FANUCethernetipDriver.writeJointPositionRegister(self.robot_IP, self.PRNumber, self.CurJointPosList)
-        self.start_robot(blocking=blocking)
 
     # Cartesian Movement Functions
 
@@ -155,37 +142,6 @@ class robot:
         #print("CURPOS=", CurPosList)
         return CurPosList[2:8]
 
-    # write PR[1] Cartesian Coordinates
-    # Takes x, y, z, w, p, r coords.
-    # WPR are the orientation of the end effector, DEFAULT to current orientation
-    # SOON TO BE CHANGED!! Will take a list of coordinates instead of individual arguements. Keeping for now for compatability
-    def write_cartesian_position(self, X: float, Y:float, Z:float, W:float | None, P:float | None, R:float | None, blocking:bool=True):
-        """! Send cartesian coordinates to robot using X, Y, Z, W, P, R system. 
-        These coordinates usually correlate to the tool end effectors position.
-        @param X            X cartesian coordinate
-        @param Y            Y cartesian coordinate
-        @param Z            Z cartesian coordinate
-        @param W            Yaw
-        @param P            Pitch
-        @param R            Roll
-        """
-        print("Deperication Warning: Passing arguments in this style will soon be depricated! In the future, pass arguments as a list.")
-        if W > 179.9 or W < -179.9:
-            raise Warning(f"W, P and R should be in the range of [-179.9, 179.9], got {W}")
-        if P > 179.9 or P < -179.9:
-            raise Warning(f"W, P and R should be in the range of [-179.9, 179.9], got {P}")
-        if R > 179.9 or R < -179.9:
-            raise Warning(f"W, P and R should be in the range of [-179.9, 179.9], got {R}")
-        
-        self.CurCartesianPosList[2] = X
-        self.CurCartesianPosList[3] = Y
-        self.CurCartesianPosList[4] = Z
-        self.CurCartesianPosList[5] = W if W is not None else self.CurCartesianPosList[5]
-        self.CurCartesianPosList[6] = P if P is not None else self.CurCartesianPosList[6]
-        self.CurCartesianPosList[7] = R if R is not None else self.CurCartesianPosList[7]
-
-        FANUCethernetipDriver.writeCartesianPositionRegister(self.robot_IP, self.PRNumber,  self.CurCartesianPosList)
-        self.start_robot(blocking=blocking)
 
     # write PR[1] Cartesian Coordinates
     # Takes x, y, z, w, p, r coords.
@@ -359,29 +315,9 @@ class robot:
         else:
             raise Warning(f"Gripper only supports 'open' or 'closed' strings")
 
-
-    # Open onRobot gripper
-    def onRobot_gripper_open(self, width_in_mm:int, force_in_newtons:int):
-        """! FUNCTION WILL BE MOVED TO ITS OWN MODULE: opens the onRobot gripper
-        @param width_in_mm          value in mm to set gripper jaw distance
-        @param force_in_newtons     value 0-120 in newtons
-        """
-        if width_in_mm > 160 | width_in_mm < 0:
-            raise Warning(f"Width should be in the range of [0, 160], got {width_in_mm}")
-        if force_in_newtons > 120 | force_in_newtons < 0:
-            raise Warning(f"Force should be in the range of [0, 120], got {force_in_newtons}")
-        
-        FANUCethernetipDriver.writeR_Register(self.robot_IP, 35, 1) # Instance typically 1
-        FANUCethernetipDriver.writeR_Register(self.robot_IP, 36, width_in_mm) # Set open width in mm
-        FANUCethernetipDriver.writeR_Register(self.robot_IP, 37, force_in_newtons) # Set open force in newtons
-        FANUCethernetipDriver.writeR_Register(self.robot_IP, 42, 8) # Set to 1 for use with R[43]
-        FANUCethernetipDriver.writeR_Register(self.robot_IP, 43, 50) # Register # you want data sent to
-        #FANUCethernetipDriver.writeR_Register(self.robot_IP, 3, 1) # Set sync bit for onRobot gripper 1 = open
-        FANUCethernetipDriver.writeR_Register(self.robot_IP, 3, 3) # Set sync bit for onRobot gripper 1 = open
-
-    # Close onRobot gripper
-    def onRobot_gripper_close(self, width_in_mm:int, force_in_newtons:int):
-        """! FUNCTION WILL BE MOVED TO ITS OWN MODULE: closes the onRobot gripper
+    # Control onRobot gripper
+    def onRobot_gripper(self, width_in_mm:int, force_in_newtons:int):
+        """opens or closes the onRobot gripper
         @param width_in_mm          value in mm to set gripper jaw distance
         @param force_in_newtons     value 0-120 in newtons
         """
@@ -471,3 +407,17 @@ class robot:
         FANUCethernetipDriver.writeR_Register(self.robot_IP, DigitalOut, status)
         ## Set sync bit to update
         FANUCethernetipDriver.writeR_Register(self.robot_IP, sync_register, sync_value)
+
+
+
+    def schunk_gripper_status(self) -> int:
+        """
+        Returns the current state of the Schunk gripper
+        """
+        r1 = FANUCethernetipDriver.readRobotInput(self.robot_IP, 1) # RI[1] Schunk Gripper off
+
+        # If not closed, its open
+        if r1:
+            return 0
+        else:
+            return 1
