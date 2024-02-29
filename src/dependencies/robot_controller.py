@@ -410,14 +410,10 @@ class robot:
 
 
 
-    def schunk_gripper_status(self) -> int:
+    def schunk_gripper_status(self) -> bool:
         """
         Returns the current state of the Schunk gripper
         """
-        r1 = FANUCethernetipDriver.readRobotInput(self.robot_IP, 1) # RI[1] Schunk Gripper off
-
+        r1 = bool(FANUCethernetipDriver.readRobotInput(self.robot_IP, 1)) # RI[1] Schunk Gripper off
         # If not closed, its open
-        if r1:
-            return 0
-        else:
-            return 1
+        return not r1

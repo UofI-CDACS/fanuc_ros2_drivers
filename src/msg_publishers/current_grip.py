@@ -36,7 +36,7 @@ class check_grip(Node):
 
     def timer_callback(self):
         msg = CurGripper()                               
-        msg.open = bool(self.bot.schunk_gripper_status())                         
+        msg.open = bool(self.bot.schunk_gripper_status())                      
         self.publisher_.publish(msg)
         # if FANUCethernetipDriver.DEBUG:
         # 	self.get_logger().info('Publishing: ' % msg.open)
