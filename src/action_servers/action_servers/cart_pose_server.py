@@ -79,35 +79,39 @@ class cart_pose_server(Node):
             return CancelResponse.ACCEPT
 
     def execute_callback(self, goal_handle):
-        # WIP: Add Try/Except to catch possible errors
-        # Create base for feedback
-        feedback_msg = CartPose.Feedback()
-        feedback_msg.distance_left = self.bot.read_current_cartesian_pose() # starting pose
+        try:
+            # Create base for feedback
+            feedback_msg = CartPose.Feedback()
+            feedback_msg.distance_left = self.bot.read_current_cartesian_pose() # starting pose
 
-        self.bot.write_cartesian_position([self.goal.x,
-                                          self.goal.y,
-                                          self.goal.z,
-                                          self.goal.w, 
-                                          self.goal.p,
-                                          self.goal.r],
-                                          blocking=False)
+            self.bot.write_cartesian_position([self.goal.x,
+                                            self.goal.y,
+                                            self.goal.z,
+                                            self.goal.w, 
+                                            self.goal.p,
+                                            self.goal.r],
+                                            blocking=False)
 
-        while self.bot.is_moving():
-            # Calculate distance left
-            feedback_msg.distance_left[0] -= self.goal.x
-            feedback_msg.distance_left[1] -= self.goal.y
-            feedback_msg.distance_left[2] -= self.goal.z
-            feedback_msg.distance_left[3] -= self.goal.w
-            feedback_msg.distance_left[4] -= self.goal.p
-            feedback_msg.distance_left[5] -= self.goal.r
-            goal_handle.publish_feedback(feedback_msg) # Send value
+            while self.bot.is_moving():
+                # Calculate distance left
+                feedback_msg.distance_left[0] -= self.goal.x
+                feedback_msg.distance_left[1] -= self.goal.y
+                feedback_msg.distance_left[2] -= self.goal.z
+                feedback_msg.distance_left[3] -= self.goal.w
+                feedback_msg.distance_left[4] -= self.goal.p
+                feedback_msg.distance_left[5] -= self.goal.r
+                goal_handle.publish_feedback(feedback_msg) # Send value
 
-            feedback_msg.distance_left = self.bot.read_current_cartesian_pose() # Update cur pos
+                feedback_msg.distance_left = self.bot.read_current_cartesian_pose() # Update cur pos
 
-        
-        goal_handle.succeed()
-        result = CartPose.Result()
-        result.success = True
+            
+            goal_handle.succeed()
+            result = CartPose.Result()
+            result.success = True
+        except:
+            goal_handle.canceled()
+            result = CartPose.Result()
+            result.success = False
         self.goal = CartPose.Goal() #Reset
         return result
 

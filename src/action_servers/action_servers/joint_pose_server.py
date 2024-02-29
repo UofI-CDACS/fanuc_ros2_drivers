@@ -81,34 +81,38 @@ class joint_pose_server(Node):
             return CancelResponse.ACCEPT
 
     async def execute_callback(self, goal_handle):
-        # WIP: Add Try/Except to catch possible error
-        feedback_msg = JointPose.Feedback()
-        feedback_msg.distance_left = self.bot.read_current_joint_position() # starting pose
+        try:
+            feedback_msg = JointPose.Feedback()
+            feedback_msg.distance_left = self.bot.read_current_joint_position() # starting pose
 
-        list = [self.goal.joint1,
-                self.goal.joint2,
-                self.goal.joint3,
-                self.goal.joint4, 
-                self.goal.joint5,
-                self.goal.joint6]
-        
-        self.bot.write_joint_pose(list, blocking=False)
+            list = [self.goal.joint1,
+                    self.goal.joint2,
+                    self.goal.joint3,
+                    self.goal.joint4, 
+                    self.goal.joint5,
+                    self.goal.joint6]
+            
+            self.bot.write_joint_pose(list, blocking=False)
 
-        while self.bot.is_moving():
-            # Calculate distance left
-            feedback_msg.distance_left[0] -= self.goal.joint1
-            feedback_msg.distance_left[1] -= self.goal.joint2
-            feedback_msg.distance_left[2] -= self.goal.joint3
-            feedback_msg.distance_left[3] -= self.goal.joint4
-            feedback_msg.distance_left[4] -= self.goal.joint5
-            feedback_msg.distance_left[5] -= self.goal.joint6
-            goal_handle.publish_feedback(feedback_msg) # Send value
+            while self.bot.is_moving():
+                # Calculate distance left
+                feedback_msg.distance_left[0] -= self.goal.joint1
+                feedback_msg.distance_left[1] -= self.goal.joint2
+                feedback_msg.distance_left[2] -= self.goal.joint3
+                feedback_msg.distance_left[3] -= self.goal.joint4
+                feedback_msg.distance_left[4] -= self.goal.joint5
+                feedback_msg.distance_left[5] -= self.goal.joint6
+                goal_handle.publish_feedback(feedback_msg) # Send value
 
-            feedback_msg.distance_left = self.bot.read_current_joint_position() # Update cur pos
+                feedback_msg.distance_left = self.bot.read_current_joint_position() # Update cur pos
 
-        goal_handle.succeed()
-        result = JointPose.Result()
-        result.success = True
+            goal_handle.succeed()
+            result = JointPose.Result()
+            result.success = True
+        except:
+            goal_handle.canceled()
+            result = JointPose.Result()
+            result.success = False
         self.goal = JointPose.Goal() # Reset
         return result
 

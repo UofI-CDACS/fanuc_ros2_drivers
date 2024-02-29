@@ -64,23 +64,27 @@ class sjoint_pose_server(Node):
             return CancelResponse.ACCEPT
 
     async def execute_callback(self, goal_handle):
-        # WIP: Add Try/Except to catch possible error
-        feedback_msg = SJointPose.Feedback()
-        feedback_msg.distance_left = self.bot.read_current_joint_position()[self.goal.joint - 1] # starting pose
-        
-        self.bot.write_joint_position(self.goal.joint, self.goal.angle, blocking=False)
+        try:
+            feedback_msg = SJointPose.Feedback()
+            feedback_msg.distance_left = self.bot.read_current_joint_position()[self.goal.joint - 1] # starting pose
+            
+            self.bot.write_joint_position(self.goal.joint, self.goal.angle, blocking=False)
 
-        while self.bot.is_moving():
-            # Calculate distance left
-            feedback_msg.distance_left -= self.goal.angle
-            goal_handle.publish_feedback(feedback_msg) # Send value
+            while self.bot.is_moving():
+                # Calculate distance left
+                feedback_msg.distance_left -= self.goal.angle
+                goal_handle.publish_feedback(feedback_msg) # Send value
 
-            feedback_msg.distance_left = self.bot.read_current_joint_position()[self.goal.joint - 1] # Update cur pos
+                feedback_msg.distance_left = self.bot.read_current_joint_position()[self.goal.joint - 1] # Update cur pos
 
 
-        goal_handle.succeed()
-        result = SJointPose.Result()
-        result.success = True
+            goal_handle.succeed()
+            result = SJointPose.Result()
+            result.success = True
+        except:
+            goal_handle.canceled()
+            result = SJointPose.Result()
+            result.success = False
         self.goal = SJointPose.Goal()
         return result
 
