@@ -2,6 +2,7 @@
 import sys
 import os
 import rclpy
+from time import sleep
 
 sys.path.append("src/dependencies/")
 import FANUCethernetipDriver
@@ -91,8 +92,8 @@ class cart_pose_server(Node):
                                             self.goal.p,
                                             self.goal.r],
                                             blocking=False)
-
-            while self.bot.is_moving():
+            check = True # verify that it got close enough, false means done
+            while self.bot.is_moving() and check:
                 # Calculate distance left
                 feedback_msg.distance_left[0] -= self.goal.x
                 feedback_msg.distance_left[1] -= self.goal.y
@@ -101,7 +102,8 @@ class cart_pose_server(Node):
                 feedback_msg.distance_left[4] -= self.goal.p
                 feedback_msg.distance_left[5] -= self.goal.r
                 goal_handle.publish_feedback(feedback_msg) # Send value
-
+		
+                check = not all([ value < 2.0 for value in feedback_msg.distance_left ])
                 feedback_msg.distance_left = self.bot.read_current_cartesian_pose() # Update cur pos
 
             
