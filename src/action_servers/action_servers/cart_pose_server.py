@@ -103,7 +103,7 @@ class cart_pose_server(Node):
                 feedback_msg.distance_left[5] -= self.goal.r
                 goal_handle.publish_feedback(feedback_msg) # Send value
 		
-                check = not all([ value < 2.0 for value in feedback_msg.distance_left ])
+                check = not all([ abs(value) < 2.0 for value in feedback_msg.distance_left]) 
                 feedback_msg.distance_left = self.bot.read_current_cartesian_pose() # Update cur pos
 
             

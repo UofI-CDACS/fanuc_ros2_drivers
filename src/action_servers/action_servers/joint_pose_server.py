@@ -94,7 +94,8 @@ class joint_pose_server(Node):
             
             self.bot.write_joint_pose(list, blocking=False)
 
-            while self.bot.is_moving():
+            check = True
+            while self.bot.is_moving() and check:
                 # Calculate distance left
                 feedback_msg.distance_left[0] -= self.goal.joint1
                 feedback_msg.distance_left[1] -= self.goal.joint2
@@ -104,6 +105,7 @@ class joint_pose_server(Node):
                 feedback_msg.distance_left[5] -= self.goal.joint6
                 goal_handle.publish_feedback(feedback_msg) # Send value
 
+                check = not all([ abs(value) < 2.0 for value in feedback_msg.distance_left]) 
                 feedback_msg.distance_left = self.bot.read_current_joint_position() # Update cur pos
 
             goal_handle.succeed()
