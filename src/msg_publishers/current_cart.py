@@ -31,7 +31,7 @@ class current_cartesian(Node):
         super().__init__('cur_cart')
         self.bot = robot(robot_ip)
         self.publisher_ = self.create_publisher(CurCartesian, f'{name}/cur_cartesian', 10)
-        timer_period = 0.5
+        timer_period = 0.2
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
     def timer_callback(self):

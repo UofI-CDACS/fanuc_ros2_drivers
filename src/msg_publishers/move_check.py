@@ -31,7 +31,7 @@ class check_movement(Node):
         super().__init__('move_pub')
         self.bot = robot(robot_ip)
         self.publisher_ = self.create_publisher(IsMoving, f'{name}/is_moving', 10)
-        timer_period = 0.5
+        timer_period = 0.2
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
     def timer_callback(self):
