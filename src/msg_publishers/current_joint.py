@@ -31,7 +31,7 @@ class current_joint(Node):
         super().__init__('curr_joint')
         self.bot = robot(robot_ip)
         self.publisher_ = self.create_publisher(CurJoints, f'{name}/cur_joints', 10)
-        timer_period = 0.2
+        timer_period = 0.5
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
     def timer_callback(self):

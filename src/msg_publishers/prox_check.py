@@ -31,7 +31,7 @@ class check_prox(Node):
         super().__init__('prox_pub')
         self.bot = robot(robot_ip)
         self.publisher_ = self.create_publisher(ProxReadings, f'{name}/prox_readings', 10)
-        timer_period = 0.2
+        timer_period = 0.5
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
     def timer_callback(self):

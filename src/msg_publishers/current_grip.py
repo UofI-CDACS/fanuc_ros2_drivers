@@ -31,7 +31,7 @@ class check_grip(Node):
         super().__init__('grip_pub')
         self.bot = robot(robot_ip)
         self.publisher_ = self.create_publisher(CurGripper, f'{name}/grip_status', 10)
-        timer_period = 0.2
+        timer_period = 0.5
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
     def timer_callback(self):
