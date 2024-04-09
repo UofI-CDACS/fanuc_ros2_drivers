@@ -417,3 +417,4 @@ class robot:
         r1 = bool(FANUCethernetipDriver.readRobotInput(self.robot_IP, 1)) # RI[1] Schunk Gripper off
         # If not closed, its open
         return not r1
+

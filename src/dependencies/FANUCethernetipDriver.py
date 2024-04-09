@@ -690,7 +690,7 @@ def readRobotInput(drive_path, InputNumber):
   value = value &1 # Truncate to just the position
   #print("Register Num:",register)
   #print("Full Register:",inputs[register])
-  #print("Value:", value)
+  print("Value:", value)
   return value   
 
 
@@ -710,13 +710,13 @@ def readRobotOutput(drive_path, OutputNumber):
   if not OutputNumber or OutputNumber > 8: # If Input is 0
     raise ValueError(f"Cannot select {OutputNumber}-th register, does not exist")
 
-  outputs = readRobotOutputs(drive_path) # Read in all registers
+  inputs = readRobotInputs(drive_path) # Read in all registers
   register = ((OutputNumber-1)//8) # What register block the input is in
-  value = outputs[register] >> ((OutputNumber-1)  % 8) # Get the value at the input position requested and whatever is to the right
+  value = inputs[register] >> ((OutputNumber-1)  % 8) # Get the value at the input position requested and whatever is to the right
   value = value &1 # Truncate to just the position
   #print("Register Num:",register)
   #print("Full Register:",inputs[register])
-  #print("Value:", value)
+  print("Value:", value)
   return value   
 
 
