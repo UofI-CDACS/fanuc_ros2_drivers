@@ -51,6 +51,7 @@ class sjoint_pose_server(Node):
             self.get_logger().info('Invalid request')
             return GoalResponse.REJECT
         else:
+            self.get_logger().info('Single Joint goal recieved: '+ str(self.goal))
             return GoalResponse.ACCEPT
                 
     def cancel_callback(self, goal_handle):

@@ -51,6 +51,7 @@ class onrobot_gripper_server(Node):
             self.get_logger().info(f'Force should be between [0,120], got: {self.goal.force}')
             return GoalResponse.REJECT
         else:
+            self.get_logger().info('OnRobot goal recieved: '+ str(self.goal))
             return GoalResponse.ACCEPT
                 
     def cancel_callback(self, goal_handle):

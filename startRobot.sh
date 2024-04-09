@@ -30,14 +30,14 @@ commands[$((command_count++))]='python3 src/action_servers/action_servers/joint_
 commands[$((command_count++))]='python3 src/action_servers/action_servers/schunk_server.py '$1' '$2
 commands[$((command_count++))]='python3 src/action_servers/action_servers/onrobot_server.py '$1' '$2
 commands[$((command_count++))]='python3 src/action_servers/action_servers/single_joint_server.py '$1' '$2
-commands[$((command_count++))]='python3 src/msg_publishers/current_grip.py '$1' '$2
-commands[$((command_count++))]='python3 src/msg_publishers/current_cart.py '$1' '$2
-commands[$((command_count++))]='python3 src/msg_publishers/current_joint.py '$1' '$2
-commands[$((command_count++))]='python3 src/msg_publishers/move_check.py '$1' '$2
-commands[$((command_count++))]='python3 src/msg_publishers/prox_check.py '$1' '$2
-commands[$((command_count++))]='python3 src/msg_publishers/speed_check.py '$1' '$2
-commands[$((command_count++))]='python3 src/srv_services/mount_position.py '$1' '$2
-commands[$((command_count))]='python3 src/srv_services/set_speed.py '$1' '$2
+commands[$((command_count++))]='python3 src/msg_publishers/msg_publishers/current_grip.py '$1' '$2
+commands[$((command_count++))]='python3 src/msg_publishers/msg_publishers/current_cart.py '$1' '$2
+commands[$((command_count++))]='python3 src/msg_publishers/msg_publishers/current_joint.py '$1' '$2
+commands[$((command_count++))]='python3 src/msg_publishers/msg_publishers/move_check.py '$1' '$2
+commands[$((command_count++))]='python3 src/msg_publishers/msg_publishers/prox_check.py '$1' '$2
+commands[$((command_count++))]='python3 src/msg_publishers/msg_publishers/speed_check.py '$1' '$2
+commands[$((command_count++))]='python3 src/srv_services/srv_services/mount_position.py '$1' '$2
+commands[$((command_count))]='python3 src/srv_services/srv_services/set_speed.py '$1' '$2
 # These will all run in the background
 for cmd in "${commands[@]}" 
 do

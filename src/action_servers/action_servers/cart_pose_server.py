@@ -66,6 +66,7 @@ class cart_pose_server(Node):
                 return GoalResponse.REJECT
         
         # If here, all values are acceptable
+        self.get_logger().info('Cart goal recieved: '+ str(self.goal))
         return GoalResponse.ACCEPT
                 
     def cancel_callback(self, goal_handle):

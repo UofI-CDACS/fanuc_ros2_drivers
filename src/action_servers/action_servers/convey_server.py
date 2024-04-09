@@ -47,6 +47,7 @@ class convey_server(Node):
         if (self.goal.command == 'forward' or
             self.goal.command == 'reverse' or 
             self.goal.command == 'stop'):
+            self.get_logger().info('Convey goal recieved: '+ str(self.goal))
             return GoalResponse.ACCEPT
         else:
             self.get_logger().info('Invalid request')

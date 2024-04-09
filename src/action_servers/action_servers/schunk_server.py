@@ -45,6 +45,7 @@ class schunk_gripper_server(Node):
         
         # Check that it recieved a valid goal
         if self.goal.command == "open" or self.goal.command == "close":
+            self.get_logger().info('Schunk goal recieved: '+ str(self.goal))
             return GoalResponse.ACCEPT
         else:
             self.get_logger().info(f'Invalid request, got: {self.goal.command} type: {type(self.goal.command)}')

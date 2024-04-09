@@ -47,6 +47,7 @@ class go_mount(Node):
         except:
             response.success = False  # If here, there was some kind of error      
         else:
+            self.get_logger().info('Going to mount position')
             response.success = True   # Otherwise, evrything went well
         if FANUCethernetipDriver.DEBUG:
             self.get_logger().info('Incoming request result: ',response.success)
