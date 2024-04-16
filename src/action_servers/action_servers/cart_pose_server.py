@@ -15,8 +15,8 @@ FANUCethernetipDriver.DEBUG = False
 sys.path.append('./pycomm3/pycomm3')
 
 # Robot IP is passed as command line argument 1
-robot_ip = sys.argv[1]
-name = sys.argv[2]
+#robot_ip = sys.argv[1]
+#name = sys.argv[2]
 
 # # Quick and dirty
 # if robot_ip == '172.29.208.124':
@@ -31,6 +31,7 @@ class cart_pose_server(Node):
         super().__init__('cart_pose_server')
 
         self.declare_parameters(
+            namespace='',
             parameters=[('robot_ip','172.29.208.0')] # custom, default
         )
 

@@ -21,7 +21,7 @@
 # Imports
 import math
 import typing
-import FANUCethernetipDriver
+from . import FANUCethernetipDriver
 
 ## The mode of operation; 
 
