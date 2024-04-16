@@ -1,5 +1,7 @@
 import launch
-import launch_ros.actions import Node
+from launch_ros.actions import Node
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 
 
 def generate_launch_description():
@@ -12,7 +14,7 @@ def generate_launch_description():
         description="Name of the robot these nodes will be attached to"
     )
     robot_ip_launch_arg = DeclareLaunchArgument(
-        'robot_ip'
+        'robot_ip',
         default_value = '172.29.208.0',
         description="IP address of the robot these nodes will be attached to"
     )
@@ -26,5 +28,7 @@ def generate_launch_description():
     )
 
     return launch.LaunchDescription([
-       
+       robot_name_launch_arg,
+       robot_ip_launch_arg,
+       cart_node
     ])

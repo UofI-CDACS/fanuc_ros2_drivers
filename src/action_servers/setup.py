@@ -7,7 +7,7 @@ package_name = 'action_servers'
 setup(
     name=package_name,
     version='0.0.1',
-    packages=find_packages(exclude=['test']),
+    packages=['action_servers','dependencies'],
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
@@ -23,6 +23,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'cart_pose_server = action_servers.cart_pose_server:main'
         ],
     },
 )
+
