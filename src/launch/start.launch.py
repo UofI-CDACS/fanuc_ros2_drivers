@@ -6,8 +6,14 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import PathJoinSubstitution, TextSubstitution
 import sys
 
-name = sys.argv[1]
-ip = sys.argv[2]
+name = ''
+ip = ''
+
+for arg in sys.argv:
+    if arg.startswith("robot_name:="):
+        name = arg.split(":=")[1]
+    elif arg.startswith("robot_ip:="):
+    	ip = arg.split(":=")[1]
 
 def generate_launch_description():
     return LaunchDescription([

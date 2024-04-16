@@ -31,7 +31,8 @@ class cart_pose_server(Node):
         super().__init__('cart_pose_server')
 
         self.declare_parameters(
-            parameters=[('robot_ip','172.29.208.0')] # custom, default
+            namespace='',
+            parameters=[('robot_ip','172.29.208.0'),] # custom, default
         )
 
         self.goal = CartPose.Goal()
