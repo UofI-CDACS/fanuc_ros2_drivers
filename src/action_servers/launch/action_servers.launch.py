@@ -15,7 +15,7 @@ def generate_launch_description():
     )
     robot_ip_launch_arg = DeclareLaunchArgument(
         'robot_ip',
-        default_value = '172.29.208.1',
+        default_value = '172.29.208.0',
         description="IP address of the robot these nodes will be attached to"
     )
 
@@ -23,7 +23,7 @@ def generate_launch_description():
         package='action_servers',
         executable='cart_pose_server',
         namespace=robot_name,
-        parameters=[{'robot_ip', LaunchConfiguration('robot_ip')},]
+        parameters=[robot_ip]
         #parameters=[{'robot_ip', LaunchConfiguration('robot_ip')}] #?
     )
 
