@@ -3,10 +3,9 @@ import sys
 import os
 import rclpy
 
-sys.path.append("src/dependencies/")
-import FANUCethernetipDriver
+import dependencies.FANUCethernetipDriver as FANUCethernetipDriver
 
-from robot_controller import robot
+from dependencies.robot_controller import robot
 from fanuc_interfaces.action import JointPose
 from rclpy.node import Node
 from rclpy.action import ActionServer, GoalResponse, CancelResponse

@@ -23,7 +23,12 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'cart_pose_server = action_servers.cart_pose_server:main'
+            'cart_pose_server = action_servers.cart_pose_server:main',
+            'convey_server = action_servers.convey_server:main',
+            'joint_pose_server = action_servers.joint_pose_server:main',
+            'onrobot_server = action_servers.onrobot_server:main',
+            'schunk_server = action_servers.schunk_server:main',
+            'single_joint_server = action_servers.single_joint_server:main',
         ],
     },
 )
