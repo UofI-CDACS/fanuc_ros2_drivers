@@ -26,42 +26,54 @@ def generate_launch_description():
         executable='current_cart',
         #namespace=robot_name,
         parameters=[{"robot_ip": robot_ip,
-                     "robot_name": robot_name,},]
+                     "robot_name": robot_name,},],
+        respawn=True,
+        respawn_delay=4,
     )
     grip_node = Node(
         package=package_name,
         executable='current_grip',
         #namespace=robot_name,
         parameters=[{"robot_ip": robot_ip,
-                     "robot_name": robot_name,},]
+                     "robot_name": robot_name,},],
+        respawn=True,
+        respawn_delay=4,
     )
     joint_node = Node(
         package=package_name,
         executable='current_joint',
         #namespace=robot_name,
         parameters=[{"robot_ip": robot_ip,
-                     "robot_name": robot_name,},]
+                     "robot_name": robot_name,},],
+        respawn=True,
+        respawn_delay=4,
     )
     move_node = Node(
         package=package_name,
         executable='move_check',
         #namespace=robot_name,
         parameters=[{"robot_ip": robot_ip,
-                     "robot_name": robot_name,},]
+                     "robot_name": robot_name,},],
+        respawn=True,
+        respawn_delay=4,
     )
     prox_node = Node(
         package=package_name,
         executable='prox_check',
         #namespace=robot_name,
         parameters=[{"robot_ip": robot_ip,
-                     "robot_name": robot_name,},]
+                     "robot_name": robot_name,},],
+        respawn=True,
+        respawn_delay=4,
     )
     speed_node = Node(
         package=package_name,
         executable='speed_check',
         #namespace=robot_name,
         parameters=[{"robot_ip": robot_ip,
-                     "robot_name": robot_name,},]
+                     "robot_name": robot_name,},],
+        respawn=True,
+        respawn_delay=4,
     )
 
     return launch.LaunchDescription([

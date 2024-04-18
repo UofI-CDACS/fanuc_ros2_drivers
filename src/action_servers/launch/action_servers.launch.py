@@ -24,42 +24,54 @@ def generate_launch_description():
         executable='cart_pose_server',
         #namespace=robot_name,
         parameters=[{"robot_ip": robot_ip,
-                     "robot_name": robot_name,},]
+                     "robot_name": robot_name,},],
+        respawn=True,
+        respawn_delay=4,
     )
     convey_node = Node(
         package='action_servers',
         executable='convey_server',
         #namespace=robot_name,
         parameters=[{"robot_ip": robot_ip,
-                     "robot_name": robot_name,},]
+                     "robot_name": robot_name,},],
+        respawn=True,
+        respawn_delay=4,
     )
     joint_node = Node(
         package='action_servers',
         executable='joint_pose_server',
         #namespace=robot_name,
         parameters=[{"robot_ip": robot_ip,
-                     "robot_name": robot_name,},]
+                     "robot_name": robot_name,},],
+        respawn=True,
+        respawn_delay=4,
     )
     onrobot_node = Node(
         package='action_servers',
         executable='onrobot_server',
         #namespace=robot_name,
         parameters=[{"robot_ip": robot_ip,
-                     "robot_name": robot_name,},]
+                     "robot_name": robot_name,},],
+        respawn=True,
+        respawn_delay=4,
     )
     schunk_node = Node(
         package='action_servers',
         executable='schunk_server',
         #namespace=robot_name,
         parameters=[{"robot_ip": robot_ip,
-                     "robot_name": robot_name,},]
+                     "robot_name": robot_name,},],
+        respawn=True,
+        respawn_delay=4,
     )
     sjoint_node = Node(
         package='action_servers',
         executable='single_joint_server',
         #namespace=robot_name,
         parameters=[{"robot_ip": robot_ip,
-                     "robot_name": robot_name,},]
+                     "robot_name": robot_name,},],
+        respawn=True,
+        respawn_delay=4,
     )
 
     return launch.LaunchDescription([

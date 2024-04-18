@@ -26,14 +26,18 @@ def generate_launch_description():
         executable='mount_position',
         #namespace=robot_name,
         parameters=[{"robot_ip": robot_ip,
-                     "robot_name": robot_name,},]
+                     "robot_name": robot_name,},],
+        respawn=True,
+        respawn_delay=4,
     )
     speed_node = Node(
         package=package_name,
         executable='set_speed',
         #namespace=robot_name,
         parameters=[{"robot_ip": robot_ip,
-                     "robot_name": robot_name,},]
+                     "robot_name": robot_name,},],
+        respawn=True,
+        respawn_delay=4,
     )
  
 
