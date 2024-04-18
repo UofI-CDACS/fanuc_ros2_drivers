@@ -15,26 +15,21 @@ FANUCethernetipDriver.DEBUG = False
 
 sys.path.append('./pycomm3/pycomm3')
 
-# Robot IP is passed as command line argument 1
-robot_ip = sys.argv[1]
-name = sys.argv[2]
-
-# # Quick and dirty
-# if robot_ip == '172.29.208.124':
-# 	name = "beaker"
-# elif robot_ip == '172.29.208.123':
-#      name = "bunsen"
-# else:
-# 	name = "rogue"
 
 class schunk_gripper_server(Node):
     def __init__(self):
         super().__init__('schunk_gripper_server')
 
-        self.goal = SchunkGripper.Goal()
-        self.bot = robot(robot_ip)
+        self.declare_parameters(
+            namespace='',
+            parameters=[('robot_ip','172.29.208.0'),
+                        ('robot_name','noNAME')] # custom, default
+        )
 
-        self._action_server = ActionServer(self, SchunkGripper, f'{name}/schunk_gripper', 
+        self.goal = SchunkGripper.Goal()
+        self.bot = robot(self.get_parameter('robot_ip').value)
+
+        self._action_server = ActionServer(self, SchunkGripper, f'{self.get_parameter('robot_name').value}/schunk_gripper', 
                                         execute_callback = self.execute_callback, 
                                         goal_callback = self.goal_callback,
                                         cancel_callback = self.cancel_callback)
