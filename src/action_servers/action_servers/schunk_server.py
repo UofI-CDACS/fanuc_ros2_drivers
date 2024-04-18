@@ -29,7 +29,7 @@ class schunk_gripper_server(Node):
         self.goal = SchunkGripper.Goal()
         self.bot = robot(self.get_parameter('robot_ip').value)
 
-        self._action_server = ActionServer(self, SchunkGripper, f'{self.get_parameter('robot_name').value}/schunk_gripper', 
+        self._action_server = ActionServer(self, SchunkGripper, f"{self.get_parameter('robot_name').value}/schunk_gripper", 
                                         execute_callback = self.execute_callback, 
                                         goal_callback = self.goal_callback,
                                         cancel_callback = self.cancel_callback)

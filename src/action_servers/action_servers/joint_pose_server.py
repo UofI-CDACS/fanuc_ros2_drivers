@@ -29,7 +29,7 @@ class joint_pose_server(Node):
         self.goal = JointPose.Goal()
         self.bot = robot(self.get_parameter('robot_ip').value)
 
-        self._action_server = ActionServer(self, JointPose, f'{self.get_parameter('robot_name').value}/joint_pose', 
+        self._action_server = ActionServer(self, JointPose, f"{self.get_parameter('robot_name').value}/joint_pose", 
                                         execute_callback = self.execute_callback, 
                                         goal_callback = self.goal_callback,
                                         cancel_callback = self.cancel_callback)
