@@ -13,7 +13,7 @@
 <h3 align="center">FANUC ROS2 Drivers</h3>
 
   <p align="center">
-    Release 0.1.0
+    Release 0.1.1
     <br />
     <!--
     <a href="https://github.com/UniversityOfIdahoCDACS/FANUC-ROS2_Drivers"><strong>Explore the docs »</strong></a>
