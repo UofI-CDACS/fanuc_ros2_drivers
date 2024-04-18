@@ -9,6 +9,7 @@ import sys
 name = ''
 ip = ''
 
+# It has to be passed like this, otherwise launch gets upset
 for arg in sys.argv:
     if arg.startswith("robot_name:="):
         name = arg.split(":=")[1]
@@ -29,5 +30,18 @@ def generate_launch_description():
                 'robot_name': name,
                 'robot_ip': ip,
             }.items()
-        )
+        ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([
+                PathJoinSubstitution([
+                    FindPackageShare('msg_publishers'),
+                    'launch',
+                    'message_publishers.launch.py'
+                ])
+            ]),
+            launch_arguments={
+                'robot_name': name,
+                'robot_ip': ip,
+            }.items()
+        ),
     ])
