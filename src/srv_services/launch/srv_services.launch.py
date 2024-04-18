@@ -42,6 +42,6 @@ def generate_launch_description():
        robot_ip_launch_arg,
        mount_node,
        speed_node,
-       LogInfo(msg=LaunchConfiguration('robot_ip')),
-       LogInfo(msg=LaunchConfiguration('robot_name')),
+       #LogInfo(msg=LaunchConfiguration('robot_ip')),
+       #LogInfo(msg=LaunchConfiguration('robot_name')),
     ])

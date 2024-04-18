@@ -73,6 +73,6 @@ def generate_launch_description():
        move_node,
        prox_node,
        speed_node,
-       LogInfo(msg=LaunchConfiguration('robot_ip')),
-       LogInfo(msg=LaunchConfiguration('robot_name')),
+       #LogInfo(msg=LaunchConfiguration('robot_ip')),
+       #LogInfo(msg=LaunchConfiguration('robot_name')),
     ])
