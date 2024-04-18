@@ -87,7 +87,7 @@ ROS2 Solution for FANUC robots
    ```
 3. Clone repo
    ```sh
-   git clone git clone https://github.com/UofI-CDACS/fanuc_ros2_drivers/ --branch launch-dev
+   git clone git clone https://github.com/UofI-CDACS/fanuc_ros2_drivers/ --branch Dev
    ```
 4. Resolve Dependencies
    ```sh
