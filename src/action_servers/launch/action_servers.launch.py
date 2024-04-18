@@ -1,5 +1,5 @@
 import launch
-from launch_ros.actions import Node
+from launch_ros.actions import Node, PushRosNamespace
 from launch.actions import DeclareLaunchArgument, LogInfo
 from launch.substitutions import LaunchConfiguration
 
@@ -22,8 +22,9 @@ def generate_launch_description():
     cart_node = Node(
         package='action_servers',
         executable='cart_pose_server',
-        namespace=robot_name,
-        parameters=[{"robot_ip": robot_ip},]
+        #namespace=robot_name,
+        parameters=[{"robot_ip": robot_ip,
+                     "robot_name": robot_name,},]
     )
 
     return launch.LaunchDescription([

@@ -32,13 +32,14 @@ class cart_pose_server(Node):
 
         self.declare_parameters(
             namespace='',
-            parameters=[('robot_ip','172.29.208.0'),] # custom, default
+            parameters=[('robot_ip','172.29.208.0'),
+                        ('robot_name','noNAME')] # custom, default
         )
 
         self.goal = CartPose.Goal()
         self.bot = robot(self.get_parameter('robot_ip').value)
 
-        self._action_server = ActionServer(self, CartPose, f'/cartesian_pose', 
+        self._action_server = ActionServer(self, CartPose, f"/{self.get_parameter('robot_name').value}/cartesian_pose", 
                                         execute_callback = self.execute_callback, 
                                         goal_callback = self.goal_callback,
                                         cancel_callback = self.cancel_callback)
@@ -137,4 +138,3 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-
