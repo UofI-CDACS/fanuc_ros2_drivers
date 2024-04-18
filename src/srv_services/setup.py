@@ -1,3 +1,5 @@
+import os
+from glob import glob
 from setuptools import find_packages, setup
 
 package_name = 'srv_services'
@@ -5,11 +7,12 @@ package_name = 'srv_services'
 setup(
     name=package_name,
     version='0.0.1',
-    packages=find_packages(exclude=['test']),
+    packages=['srv_services','dependencies'],
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        (os.path.join('share', package_name, 'launch'), glob(os.path.join('launch', '*launch.[pxy][yma]*')))
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -20,6 +23,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
+            'mount_position = srv_services.mount_position:main',
+            'set_speed = srv_services.set_speed:main'
         ],
     },
 )
