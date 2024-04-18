@@ -3,10 +3,9 @@ import sys
 import os
 import rclpy
 
-sys.path.append("src/dependencies/")
-import FANUCethernetipDriver
+import dependencies.FANUCethernetipDriver as FANUCethernetipDriver
 
-from robot_controller import robot
+from dependencies.robot_controller import robot
 from fanuc_interfaces.srv import SetSpeed
 from rclpy.node import Node
 
@@ -14,23 +13,19 @@ FANUCethernetipDriver.DEBUG = False
 
 sys.path.append('./pycomm3/pycomm3')
 
-# Robot IP is passed as command line argument 1
-robot_ip = sys.argv[1]
-name = sys.argv[2]
-
-# # Quick and dirty
-# if robot_ip == '172.29.208.124':
-# 	name = "beaker"
-# elif robot_ip == '172.29.208.123':
-#      name = "bunsen"
-# else:
-# 	name = "rogue"
 
 class set_speed(Node):
     def __init__(self):
         super().__init__('speed_srv')
-        self.bot = robot(robot_ip)
-        self.srv = self.create_service(SetSpeed, f'{name}/set_speed', self.service_callback)
+
+        self.declare_parameters(
+            namespace='',
+            parameters=[('robot_ip','172.29.208.0'),
+                        ('robot_name','noNAME')] # custom, default
+        )
+
+        self.bot = robot(self.get_parameter('robot_ip').value)
+        self.srv = self.create_service(SetSpeed, f"{self.get_parameter('robot_name').value}/set_speed", self.service_callback)
 
     def service_callback(self, request, response):
         if request.speed >= 0 and request.speed <= 300:
