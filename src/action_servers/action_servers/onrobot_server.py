@@ -66,7 +66,7 @@ class onrobot_gripper_server(Node):
 
     async def execute_callback(self, goal_handle):
         # WIP: Add Try/Except to catch possible error
-        self.bot.onrobot_gripper(self.goal.width, self.goal.force)
+        self.bot.onRobot_gripper(self.goal.width, self.goal.force)
         
         goal_handle.succeed()
         result = OnRobotGripper.Result()
