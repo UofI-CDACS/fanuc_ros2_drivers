@@ -6,7 +6,7 @@ package_name = 'msg_publishers'
 
 setup(
     name=package_name,
-    version='0.0.1',
+    version='0.1.1',
     packages=['msg_publishers','dependencies'],
     data_files=[
         ('share/ament_index/resource_index/packages',

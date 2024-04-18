@@ -6,7 +6,7 @@ package_name = 'action_servers'
 
 setup(
     name=package_name,
-    version='0.0.1',
+    version='0.1.1',
     packages=['action_servers','dependencies'],
     data_files=[
         ('share/ament_index/resource_index/packages',
