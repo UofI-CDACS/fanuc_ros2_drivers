@@ -30,7 +30,7 @@ class set_speed(Node):
     def __init__(self):
         super().__init__('speed_srv')
         self.bot = robot(robot_ip)
-        self.srv = self.create_service(SetSpeed, f'{name}/set_speed', self.service_callback)
+        self.srv = self.create_service(SetSpeed, f"{name}/set_speed", self.service_callback)
 
     def service_callback(self, request, response):
         if request.speed >= 0 and request.speed <= 300:

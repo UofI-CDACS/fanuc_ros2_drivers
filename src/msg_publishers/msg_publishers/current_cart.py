@@ -25,7 +25,7 @@ class current_cartesian(Node):
         )
 
         self.bot = robot(self.get_parameter('robot_ip').value)
-        self.publisher_ = self.create_publisher(CurCartesian, f'{self.get_parameter('robot_name').value}/cur_cartesian', 10)
+        self.publisher_ = self.create_publisher(CurCartesian, f"{self.get_parameter('robot_name').value}/cur_cartesian", 10)
         timer_period = 0.5
         self.timer = self.create_timer(timer_period, self.timer_callback)
 
