@@ -68,9 +68,9 @@ ROS2 Solution for FANUC robots
 
 ### Prerequisites
 
-* pycomm
+* pycomm3
   ```sh
-  pip3 install pycomm
+  pip3 install pycomm3
   ```
 * Put Fanuc TP programs on controller
     - 'ros2_eip_back.tp' needs to be running in the background
