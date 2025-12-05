@@ -85,6 +85,10 @@ ROS2 Solution for FANUC robots
    ```sh
    source /opt/ros/jazzy/setup.bash
    ```
+Optionally, you can also run the following command to add it to your .bashrc file:
+   ```sh
+   echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc
+   ```
 2. Create a new directory
    ```sh
    mkdir -p ~/ros2_ws/
@@ -103,7 +107,7 @@ ROS2 Solution for FANUC robots
    ```sh
    rosdep install -i --from-path src --rosdistro jazzy -y
    ```
-   Note: pycomm3 may need to be installed separately:
+   Note: pycomm3 may need to be installed separately (handle this yourself via some sort of venv management):
    ```sh
    pip3 install pycomm3
    ```
@@ -112,7 +116,7 @@ ROS2 Solution for FANUC robots
    colcon build
    ```
 
-   _Full guide here: [ROS2 Humble Documentation](https://docs.ros.org/en/humble/Tutorials/Beginner-Client-Libraries/Creating-A-Workspace/Creating-A-Workspace.html)_
+   _Full guide here: [ROS2 Humble Documentation](https://docs.ros.org/en/jazzy/Tutorials/Beginner-Client-Libraries/Creating-A-Workspace/Creating-A-Workspace.html)_
    
    Installation Complete
    
@@ -121,9 +125,9 @@ ROS2 Solution for FANUC robots
 
 ## Usage
 
-## Running Nodes
+## Running Nodes (Server)
 1. Open new terminal and go to workspace
-2. Source overlay
+2. Source overlay (after building workspace):
    ```sh
    source install/setup.sh
    ```
@@ -132,14 +136,17 @@ ROS2 Solution for FANUC robots
    ros2 launch launch/start.launch.py robot_name:=NAME_OF_ROBOT robot_ip:=0.0.0.0 # Parameters must be formated this way or the command will give you an error
    ```
   - This script only works for one robot. If you need to start more than 1 robot, this should be done in mulitple terminals. (WIP)
-## Using Nodes
+## Using Nodes (Client)
 1. Open new terminal and go to workspace
 2. Source overlay
    ```sh
    source install/setup.sh
    ```
 3. Start using!
+    - run a regular python file 
+    - see tests/ for examples
 
+**Note: You will always need to source the overlay for each new terminal you open**
 
 _For more examples, please refer to the [Documentation](https://example.com)_
 
