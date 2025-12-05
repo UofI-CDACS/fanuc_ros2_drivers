@@ -68,9 +68,11 @@ ROS2 Solution for FANUC robots
 
 ### Prerequisites
 
-* pycomm3
+* ROS2 Jazzy (or Humble)
+* Python 3 and pip
+* catkin_pkg (required for ROS2 build system)
   ```sh
-  pip3 install pycomm3
+  sudo apt install python3-catkin-pkg python3-rosdep
   ```
 * Put Fanuc TP programs on controller
     - 'ros2_eip_back.tp' needs to be running in the background
@@ -79,9 +81,9 @@ ROS2 Solution for FANUC robots
 ### Installation (Linux)
 
 #### Create a ROS2 Workspace
-1. Source ROS2 Environment
+1. Source ROS2 Environment (use jazzy or humble depending on your installation)
    ```sh
-   source /opt/ros/humble/setup.bash
+   source /opt/ros/jazzy/setup.bash
    ```
 2. Create a new directory
    ```sh
@@ -92,11 +94,20 @@ ROS2 Solution for FANUC robots
    ```sh
    git clone https://github.com/UofI-CDACS/fanuc_ros2_drivers/ --branch v1.1
    ```
-4. Resolve Dependencies
+4. Initialize rosdep (first time only)
    ```sh
-   rosdep install -i --from-path src --rosdistro humble -y
+   sudo rosdep init
+   rosdep update
    ```
-5. Build the workspace with colcon
+5. Resolve Dependencies (use jazzy or humble to match your ROS2 version)
+   ```sh
+   rosdep install -i --from-path src --rosdistro jazzy -y
+   ```
+   Note: pycomm3 may need to be installed separately:
+   ```sh
+   pip3 install pycomm3
+   ```
+6. Build the workspace with colcon
    ```sh
    colcon build
    ```
