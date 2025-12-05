@@ -20,7 +20,6 @@ setup(
     maintainer_email='kolds@uidaho.edu',
     description='ROS2 implementation for Fanuc CRX10',
     license='TODO: License declaration',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'cart_pose_server = action_servers.cart_pose_server:main',
