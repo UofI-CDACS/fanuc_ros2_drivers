@@ -1,0 +1,56 @@
+# ============================================================
+# Dice Inspection Task — Configuration
+# ============================================================
+# Edit the values in this file once after calibration.
+# robot_ip is intentionally absent — supply it at launch time:
+#   ros2 launch dice_task dice_task.launch.py robot_ip:=<IP>
+# ============================================================
+
+dice_task_node:
+  ros__parameters:
+
+    # ── Robot ────────────────────────────────────────────────
+    robot_name: bunsen
+
+    # ── Task behaviour ───────────────────────────────────────
+    num_repetitions: 3        # how many times to show the dice
+    rotation_step_deg: 90.0   # end-effector roll added each rep (deg)
+    camera_settle_time: 1.0   # seconds to wait after arriving at camera pose before capturing (s)
+    camera_hold_time: 1.0     # extra seconds to hold after capture (0 = return immediately)
+    approach_height_offset: 100.0  # mm above pick/place before descending
+    gripper_settle_time: 2.0  # extra wait after gripper command for jaws to physically finish (s)
+    camera_index: 1           # which camera to use if multiple are detected (0-based)
+    image_save_dir: /home/ben-kopf/ros2_ws_Claude/fanuc_ros2_drivers/src/dice_task/images
+
+    # ── Dice pickup pose (cartesian, mm / deg) ───────────────
+    # Set these after jogging the robot to the dice centre.
+    # W/P/R is the end-effector orientation; R will be rotated
+    # automatically each repetition by rotation_step_deg.
+    dice_x: 454.079    
+    dice_y: -1.565    
+    dice_z: -116.954   
+    dice_w: 179.0    
+    dice_p: 0.0      
+    dice_r: 0.0      
+
+    # ── Camera display pose (cartesian, mm / deg) ────────────
+    # Position where the dice face is visible to the camera.
+    camera_x: 516.265  
+    camera_y: -963.244  
+    camera_z: 921.766  
+    camera_w: -2.3  
+    camera_p: -87.916    
+    camera_r: 90.260    
+
+    # ── Gripper (mm / N) ─────────────────────────────────────
+    gripper_open_width: 120.0    # jaw gap when approaching (mm)
+    gripper_close_width: 75.0   # jaw gap when gripping dice (mm) ← CALIBRATE
+    gripper_force: 30.0        # grip force in Newtons
+
+    # ── Home joint pose (deg) ────────────────────────────────
+    home_j1: 0.0
+    home_j2: 0.0
+    home_j3: 0.0
+    home_j4: 0.0
+    home_j5: -90.0
+    home_j6: 0.0

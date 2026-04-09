@@ -2,3 +2,8 @@ build/*
 install/*
 log/*
 
+# Environment variables — never commit real credentials
+.env
+
+#Images
+dice_task/images/*
