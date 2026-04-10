@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>dice_task</name>
+  <version>0.1.0</version>
+  <description>Picks up three dice, presents each to the MindVision camera, counts pips with OpenCV, and reports the total.</description>
+  <maintainer email="todo@uidaho.edu">TODO</maintainer>
+  <license>TODO: License declaration</license>
+
+  <depend>fanuc_interfaces</depend>
+  <depend>rclpy</depend>
+  <depend>sensor_msgs</depend>
+  <depend>cv_bridge</depend>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

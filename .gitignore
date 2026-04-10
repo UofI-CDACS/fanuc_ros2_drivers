@@ -1,4 +1,10 @@
 build/*
 install/*
 log/*
-
+.env
+CLAUDE.md
+.venv/
+Camera/
+__pycache__/
+*.pyc
+*.pyo

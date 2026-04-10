@@ -57,4 +57,13 @@ def generate_launch_description():
                 'robot_ip': ip,
             }.items()
         ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([
+                PathJoinSubstitution([
+                    FindPackageShare('dice_task'),
+                    'launch',
+                    'dice_task.launch.py'
+                ])
+            ]),
+        ),
     ])
