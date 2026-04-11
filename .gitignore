@@ -1,4 +1,8 @@
 build/*
 install/*
 log/*
+**/__pycache__/
+tests/Camera/
+tests/mvsdk.py
+conversation_log.md
 

@@ -78,6 +78,26 @@ ROS2 Solution for FANUC robots
     - 'ros2_eip_back.tp' needs to be running in the background
     - 'ros2_eip_mainv2.tp' runs in the foreground when you want to use ROS
 
+#### Camera Prerequisites (optional — required only for vision features in `tests/`)
+
+The vision test scripts use a MindVision GigE camera via the MindVision SDK.
+
+1. Download the MindVision SDK for Linux from the [MindVision website](https://www.mindvision.com.cn/rjxz/list_12.aspx)
+2. Install the SDK to register the shared library system-wide:
+   ```sh
+   cd <path-to-sdk>
+   sudo bash install.sh
+   ```
+3. Copy the Python wrapper into the `tests/` directory:
+   ```sh
+   cp <path-to-sdk>/demo/python_demo/mvsdk.py tests/
+   ```
+4. If using a GigE camera on a dedicated Ethernet adapter, add a static secondary IP on that adapter so the host is in the same subnet as the camera. To make it persistent via NetworkManager:
+   ```sh
+   nmcli connection modify "<your-adapter-connection-name>" +ipv4.addresses "<host-ip>/<prefix>"
+   nmcli connection up "<your-adapter-connection-name>"
+   ```
+
 ### Installation (Linux)
 
 #### Create a ROS2 Workspace

@@ -13,10 +13,8 @@ from time import sleep
 
 import sys
 sys.path.append("../src/dependencies/")
-from pynput.keyboard import KeyCode
-from key_commander import KeyCommander
 
-namespace = 'bunsen'
+namespace = 'bill'  # was bunsen
 
 class FanucServices(Node):
     def __init__(self, namespace):
@@ -57,9 +55,7 @@ if __name__ == '__main__':
 	
     fanuc = FanucServices(namespace)
 
-    keycom = KeyCommander([
-		(KeyCode(char='s'), fanuc.run_test),
-		])
+
     print("S")
     rclpy.spin(fanuc)
     rclpy.shutdown()
