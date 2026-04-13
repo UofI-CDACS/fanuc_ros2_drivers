@@ -1,0 +1,14 @@
+robot_control_node:
+  ros__parameters:
+    robot_name: fanuc
+    move_speed: 30
+
+    # Joint poses — degrees [J1, J2, J3, J4, J5, J6]
+    pose_home:   [0.288, -6.616, -22.788, -1.4656, -72.845, 33.418]
+    pose_camera: [65.258, 22.365, -16.524, -2.602, 16.465, 27.489]
+
+    # Cartesian poses — millimetres + degrees [X, Y, Z, W, P, R]
+    pose_pick_approach: [476.388, -8.056, -110.326, -175.766, 3.958,  33.296]
+    pose_pick:          [476.388, -8.056, -175.326, -175.766, 3.958,  33.296]
+    pose_drop:          [476.388, -8.056, -175.326, -175.766, 3.958, -62.655]
+    pose_move_up:       [476.388, -8.056, -110.326, -175.766, 3.958, -62.655]
