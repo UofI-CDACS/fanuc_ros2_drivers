@@ -47,7 +47,7 @@ positions = [
             ]
 
 class FanucActions(Node):
-    current_state = 4 ## CHANGE ME BACK TO 1
+    current_state = 1 ## CHANGE ME BACK TO 1
     count = 0
     Pip_total = 0
     Pip_current = 0
@@ -149,6 +149,8 @@ class FanucActions(Node):
                         frame = cv.resize(frame, (640,480), interpolation = cv.INTER_LINEAR)
                         # DO STUFF
                         self.Pip_current, image = self.countPips(frame)
+
+                        # Debugging
                         cv.imshow('Display Window', image)
                         cv.waitKey(0)
                         cv.destroyAllWindows()
@@ -163,14 +165,15 @@ class FanucActions(Node):
                     print(f"Pip total is at {self.Pip_total} pip(s) total!")
                     self.Pip_current = 0
 
-                    # if self.count < 3:
-                    #     self.current_state = 3
-                    # elif self.count >= 3:
-                    #     self.current_state = 5
+                    if self.count < 3:
+                        self.current_state = 3
+                    elif self.count >= 3:
+                        self.current_state = 5
 
                 case 5: # Return dice
                     print("Returning dice")
                     self.joint_move(positions[4])
+                    sleep(10)
                     self.joint_move(positions[3])
                     self.joint_move(positions[0])
                     self.cart_move(positions[1])
@@ -272,19 +275,35 @@ class FanucActions(Node):
         x, y, w, h = cv.boundingRect(die_contour)
         crop = image[y:y+h, x:x+w]
 
-        # Isolate black pips within cropped die
-        gray = cv.cvtColor(crop, cv.COLOR_BGR2GRAY)
-        _, pip_mask = cv.threshold(gray, 50, 255, cv.THRESH_BINARY_INV)
-        pip_mask = cv.erode(pip_mask, None, iterations=1)
-        pip_mask = cv.dilate(pip_mask, None, iterations=1)
+        # --- Approach 1: Contour + circularity filter ---
+        # gray = cv.cvtColor(crop, cv.COLOR_BGR2GRAY)
+        # _, pip_mask = cv.threshold(gray, 50, 255, cv.THRESH_BINARY_INV)
+        # pip_mask = cv.erode(pip_mask, None, iterations=1)
+        # pip_mask = cv.dilate(pip_mask, None, iterations=1)
+        # pip_contours, _ = cv.findContours(pip_mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
+        # for pip in pip_contours:
+        #     area = cv.contourArea(pip)
+        #     if not (25 < area < 500):
+        #         continue
+        #     perimeter = cv.arcLength(pip, True)
+        #     if perimeter == 0:
+        #         continue
+        #     circularity = 4 * np.pi * area / (perimeter ** 2)
+        #     if circularity > 0.5:
+        #         px, py, pw, ph = cv.boundingRect(pip)
+        #         cv.rectangle(crop, (px, py), (px + pw, py + ph), (0, 255, 0), 1)
+        #         pipcount += 1
 
-        # Count pip contours and draw bounding boxes
-        pip_contours, _ = cv.findContours(pip_mask, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE)
-        for pip in pip_contours:
-            area = cv.contourArea(pip)
-            if 25 < area < 500:
-                px, py, pw, ph = cv.boundingRect(pip)
-                cv.rectangle(crop, (px, py), (px + pw, py + ph), (0, 255, 0), 1)
+        # --- Approach 2: Hough circle detection ---
+        # Tuning knobs: param2 (accumulator threshold — lower += more circles, higher = fewer)                               
+        #               minRadius/maxRadius — adjust to match +pip size in frame   
+        gray = cv.cvtColor(crop, cv.COLOR_BGR2GRAY)
+        gray = cv.GaussianBlur(gray, (5, 5), 0)
+        circles = cv.HoughCircles(gray, cv.HOUGH_GRADIENT, dp=1, minDist=10,
+                                  param1=50, param2=15, minRadius=3, maxRadius=20)
+        if circles is not None:
+            for (cx, cy, r) in np.round(circles[0]).astype(int):
+                cv.rectangle(crop, (cx - r, cy - r), (cx + r, cy + r), (0, 255, 0), 1)
                 pipcount += 1
 
         return pipcount, image
