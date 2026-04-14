@@ -8,13 +8,16 @@ import sys
 
 name = ''
 ip = ''
+camera_index = '0'
 
 # It has to be passed like this, otherwise launch gets upset
 for arg in sys.argv:
     if arg.startswith("robot_name:="):
         name = arg.split(":=")[1]
     elif arg.startswith("robot_ip:="):
-    	ip = arg.split(":=")[1]
+        ip = arg.split(":=")[1]
+    elif arg.startswith("camera_index:="):
+        camera_index = arg.split(":=")[1]
 
 def generate_launch_description():
     return LaunchDescription([
@@ -55,6 +58,19 @@ def generate_launch_description():
             launch_arguments={
                 'robot_name': name,
                 'robot_ip': ip,
+            }.items()
+        ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([
+                PathJoinSubstitution([
+                    FindPackageShare('dice_controller'),
+                    'launch',
+                    'dice_controller.launch.py'
+                ])
+            ]),
+            launch_arguments={
+                'robot_name': name,
+                'camera_index': camera_index,
             }.items()
         ),
     ])

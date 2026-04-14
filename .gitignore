@@ -2,3 +2,21 @@ build/*
 install/*
 log/*
 
+# Local config — copy config.env.example → config.env and fill in your values
+config.env
+*.env
+
+# Camera SDK runtime data (logs contain hardware IPs/serial numbers)
+Camera/
+
+# YOLO artefacts — large binaries, not needed in repo
+runs/
+*.pt
+
+# Training images — large, captured locally
+training_images/
+
+# Python cache
+__pycache__/
+*.pyc
+
