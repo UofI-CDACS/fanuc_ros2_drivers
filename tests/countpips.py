@@ -9,10 +9,11 @@ import cv2
 
 # Constants
 rest_joint = [18.446,-7.714,-12.393,.285,-76.969,99.095]
-camera_cart = [474.523,1010.305,514.833,87.937,-62.385,-178.903]
+camera_cart = [474.523,1010.305,515.833,87.937,-62.385,-178.903]
+camera_cart_center = [542.683, 558.282, -120.016, 179.417, .375, 117.602]
 cube_grab_cart = [462.427,11.330,-178.959,179.417,.375,117.602]
 
-camera_cart_side = [542.683,577.921,-120.016,83.716,-62.295,-175.130]
+camera_cart_side = [547.867,531.840,-122.704,83.716,-62.295,-175.130]
 camera_cart = [542.683, 577.921, -120.016, 179.417, .375, 117.602]
 conveyor_back_cart = [-204.389, 628.609, 16.305, 179.417, .375, 117.602]
 conveyor_front_cart = [0]
@@ -33,6 +34,7 @@ async def main():
     #grab cube
     await robot.move_cartesian(cube_grab_cart)
     await robot.open_gripper_schunk('close')
+    await robot.move_joints(rest_joint)
     #put cube in camera spot
     await robot.move_cartesian(camera_cart)
     await robot.open_gripper_schunk('open')
@@ -40,17 +42,20 @@ async def main():
 
     #take image
     side = await robot.get_dice_pip_count()
-
     #rotate cube
-    await rotate_cube()
+    await rotate_cube_x()
     await robot.move_joints(rest_joint)
     #take image
     top = await robot.get_dice_pip_count()
     
     #identify dice location
-    await robot.identify_dice_location(top=top, side=side, clockwise=True)
+    await robot.identify_dice_location(top=top, side=side, clockwise=False)
     #find face with pip 1
-    #rotate to spot
+    move_sequence = await robot.find_face_with_pip(pip=1, prefer_clockwise=False)
+    #rotate to correct side
+    await follow_move_instructions(move_sequence)
+
+    await robot.move_joints(rest_joint)
 
     #put dice on rear conveyor
     #stop conveyor when right sensor is triggered
@@ -96,16 +101,37 @@ async def test():
 
     # frame = await robot.get_overhead_camera_frame()
     
+async def follow_move_instructions(move_sequence):
+    for move in move_sequence:
+        if move == 0:
+            await rotate_cube_z(clockwise=True)
+        elif move == 1:
+            await rotate_cube_z(clockwise=False)
+        elif move == 2 or move == 3:
+            await rotate_cube_x()
 
-async def rotate_cube():
+async def rotate_cube_x():
     await robot.move_cartesian(scoot(camera_cart,50))
     await robot.move_cartesian(camera_cart)
     await robot.open_gripper_schunk('close')
     await robot.move_cartesian(scoot(camera_cart,100))
     await robot.move_cartesian(camera_cart_side)
     await robot.open_gripper_schunk('open')
+    await robot.move_cartesian(scoot(camera_cart_side,200))
+    await robot.move_cartesian(scoot(camera_cart,50))
     #await robot.move_joints(rest_joint)
 
-
+async def rotate_cube_z(clockwise=True):
+    await robot.move_cartesian(scoot(camera_cart_center,50))
+    await robot.move_cartesian(camera_cart_center)
+    await robot.open_gripper_schunk('close')
+    pos = camera_cart_center[:]
+    pos[5] = pos[5] + (-90 if clockwise else 90)
+    pos[5] = (pos[5] + 180) % 360 - 180 #wrap to [-180,180]
+    await robot.move_cartesian(pos)
+    await robot.open_gripper_schunk('open')
+    await robot.move_cartesian(scoot(pos,50))
+    await robot.move_cartesian(scoot(camera_cart_center,50))
+    #await robot.move_joints(rest_joint)
 if __name__ == "__main__":
     asyncio.run(main())

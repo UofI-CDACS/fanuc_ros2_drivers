@@ -10,6 +10,9 @@ class CubeMap:
     
     #Identify the position of the cube base on the top face and one side face, specify if the side face is clockwise or counterclockwise from the top face
     def identify_dice_location(self, top, side = 0, clockwise = False):
+        #clear map before filling in new values
+        self.map = np.zeros((6,1), dtype=int)
+        
         self.map[0] = top
         if clockwise:
             self.map[1] = side
@@ -102,6 +105,16 @@ class CubeMap:
         #Check if pip is on top
         if self.map[0] == pip:
             return move_sequence
+
+        #check if pip is on the back, if so rotate 180 degrees on Z axis
+        if self.map[3] == pip and not prefer_clockwise:
+            self.rotate_cube_z_axis(clockwise=True)
+            self.rotate_cube_z_axis(clockwise=True)
+            move_sequence.extend([0,0])
+        elif self.map[1] == pip and prefer_clockwise:
+            self.rotate_cube_z_axis(clockwise=True)
+            self.rotate_cube_z_axis(clockwise=True)
+            move_sequence.extend([0,0])
 
         #Rotate on X axis until pip is on top, prefer clockwise for right robot and counterclockwise for left robot
         for i in range(4):
