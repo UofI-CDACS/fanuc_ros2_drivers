@@ -13,7 +13,7 @@ class Camera:
 
         for i, DevInfo in enumerate(DevList):
             print("{}: {} {}".format(i, DevInfo.GetFriendlyName(), DevInfo.GetPortType()))
-        i = 0 if nDev == 1 else int(input("Select camera: "))
+        i = 0 #if nDev == 1 else int(input("Select camera: "))
         DevInfo = DevList[i]
         print(DevInfo)
 
