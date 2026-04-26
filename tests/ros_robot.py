@@ -29,7 +29,7 @@ class FanucRosNode(Node):
 
         self.namespace = namespace
 
-        self.camera_capture_client = self.create_client(Trigger, 'camera/capture')
+        # self.camera_capture_client = self.create_client(Trigger, 'camera/capture')
         self.camera_pip_client = self.create_client(Trigger, 'camera/count_pips')
 
         self.cube_identify_client = self.create_client(Trigger, 'dice/identify_dice_location')
@@ -44,16 +44,16 @@ class FanucRosNode(Node):
         self._bridge = CvBridge()
 
     #Camera functions
-    async def get_overhead_camera_frame(self):
-        self.get_logger().info("Requesting camera capture...")
-        self.camera_capture_client.wait_for_service()
-        frame_future = asyncio.get_running_loop().create_future()
-        sub = self.create_subscription(Image, 'camera/image_raw',
-            lambda msg: frame_future.set_result(self._bridge.imgmsg_to_cv2(msg, 'bgr8')), 10)
-        await self.__wait_for_future(self.camera_capture_client.call_async(Trigger.Request()))
-        frame = await frame_future
-        self.destroy_subscription(sub)
-        return frame
+    # async def get_overhead_camera_frame(self):
+    #     self.get_logger().info("Requesting camera capture...")
+    #     self.camera_capture_client.wait_for_service()
+    #     frame_future = asyncio.get_running_loop().create_future()
+    #     sub = self.create_subscription(Image, 'camera/image_raw',
+    #         lambda msg: frame_future.set_result(self._bridge.imgmsg_to_cv2(msg, 'bgr8')), 10)
+    #     await self.__wait_for_future(self.camera_capture_client.call_async(Trigger.Request()))
+    #     frame = await frame_future
+    #     self.destroy_subscription(sub)
+    #     return frame
 
     async def get_dice_pip_count(self):
         self.get_logger().info("Requesting pip count from camera node...")

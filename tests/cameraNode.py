@@ -18,26 +18,26 @@ class CameraNode(Node):
         super().__init__('camera_node')
         self._bridge = CvBridge()
         self._camera = Camera()
-        self._pub = self.create_publisher(Image, 'camera/image_raw', 10)
-        self.create_service(Trigger, 'camera/capture', self._capture)
+        # self._pub = self.create_publisher(Image, 'camera/image_raw', 10)
+        # self.create_service(Trigger, 'camera/capture', self._capture)
         self.create_service(Trigger, 'camera/count_pips', self._count_pips_service)
         self.get_logger().info('CameraNode ready — call /camera/capture to grab a frame')
 
 #Publisher functions Claude
-    def _capture(self, request, response):
-        try:
-            frame = asyncio.run(self._camera.getFrameAsync())
-            msg = self._bridge.cv2_to_imgmsg(frame, encoding='bgr8')
-            msg.header.stamp = self.get_clock().now().to_msg()
-            msg.header.frame_id = 'camera_frame'
-            self._pub.publish(msg)
-            self.get_logger().info('Captured and published camera frame')
-            response.success = True
-            response.message = ''
-        except Exception as e:
-            response.success = False
-            response.message = str(e)
-        return response
+    # def _capture(self, request, response):
+    #     try:
+    #         frame = asyncio.run(self._camera.getFrameAsync())
+    #         msg = self._bridge.cv2_to_imgmsg(frame, encoding='bgr8')
+    #         msg.header.stamp = self.get_clock().now().to_msg()
+    #         msg.header.frame_id = 'camera_frame'
+    #         self._pub.publish(msg)
+    #         self.get_logger().info('Captured and published camera frame')
+    #         response.success = True
+    #         response.message = ''
+    #     except Exception as e:
+    #         response.success = False
+    #         response.message = str(e)
+    #     return response
 
     def _count_pips_service(self, request, response):
         try:
