@@ -3,3 +3,4 @@ install/*
 log/*
 .venv/
 Camera/
+*.pyc

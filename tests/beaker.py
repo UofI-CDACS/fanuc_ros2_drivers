@@ -34,25 +34,9 @@ async def main():
     await robot.move_cartesian(cube_grab_cart)
     await robot.open_gripper_schunk('close')
     await robot.move_joints(rest_joint)
-    #put cube in camera spot
-    await robot.move_cartesian(camera_cart)
-    await robot.open_gripper_schunk('open')
-    await robot.move_joints(rest_joint)
 
-    #take image
-    side = await robot.get_dice_pip_count()
-    #rotate cube
-    await rotate_cube_x()
-    await robot.move_joints(rest_joint)
-    #take image
-    top = await robot.get_dice_pip_count()
-    
-    #identify dice location
-    await robot.identify_dice_location(top=top, side=side, clockwise=False)
-    #find face with pip 1
-    move_sequence = await robot.find_face_with_pip(pip=1, prefer_clockwise=False)
-    #rotate to correct side
-    await follow_move_instructions(move_sequence)
+    #Find dice
+    await identify_find_dice_routine(pip=1)
 
     await robot.move_joints(rest_joint)
 
@@ -99,7 +83,28 @@ async def test():
     # await robot.move_conveyor('stop')
 
     # frame = await robot.get_overhead_camera_frame()
+
+async def identify_find_dice_routine(pip=1):
+    #put cube in camera spot
+    await robot.move_cartesian(camera_cart)
+    await robot.open_gripper_schunk('open')
+    await robot.move_joints(rest_joint)
+
+    #take image
+    side = await robot.get_dice_pip_count()
+    #rotate cube
+    await rotate_cube_x()
+    await robot.move_joints(rest_joint)
+    #take image
+    top = await robot.get_dice_pip_count()
     
+    #identify dice location
+    await robot.identify_dice_location(top=top, side=side, clockwise=False)
+    #find face with pip 1
+    move_sequence = await robot.find_face_with_pip(pip=pip, prefer_clockwise=False)
+    #rotate to correct side
+    await follow_move_instructions(move_sequence)
+
 async def follow_move_instructions(move_sequence):
     for move in move_sequence:
         if move == 0:
