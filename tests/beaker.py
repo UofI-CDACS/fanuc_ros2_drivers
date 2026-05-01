@@ -1,3 +1,4 @@
+#12:45 - 2:45 friday May 15th
 import asyncio
 from camera import Camera
 import numpy as np
@@ -20,7 +21,7 @@ conveyor_front_cart = [0]
 async def main():
     #Create robot node
     rclpy.init()
-    global robot, robot1
+    global robot
     robot = FanucRosNode('beaker')
     executor = rclpy.executors.SingleThreadedExecutor()
     executor.add_node(robot)
@@ -36,7 +37,7 @@ async def main():
     await robot.move_joints(rest_joint)
 
     #Find dice
-    #await identify_find_dice_routine(pip=1)
+    await identify_find_dice_routine(pip=1)
 
     #await robot.move_joints(rest_joint)
     
@@ -60,7 +61,7 @@ async def main():
         await asyncio.sleep(0.05)
 
     #publish dice ready
-    await robot.set_dice_ready(True)
+    robot.set_dice_ready(True)
 
     #grab dice from front conveyor
     #put dice in camera spot

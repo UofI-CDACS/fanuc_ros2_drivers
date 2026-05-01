@@ -24,21 +24,6 @@ class CameraNode(Node):
         self.get_logger().info('CameraNode ready — call /camera/capture to grab a frame')
 
 #Publisher functions Claude
-    # def _capture(self, request, response):
-    #     try:
-    #         frame = asyncio.run(self._camera.getFrameAsync())
-    #         msg = self._bridge.cv2_to_imgmsg(frame, encoding='bgr8')
-    #         msg.header.stamp = self.get_clock().now().to_msg()
-    #         msg.header.frame_id = 'camera_frame'
-    #         self._pub.publish(msg)
-    #         self.get_logger().info('Captured and published camera frame')
-    #         response.success = True
-    #         response.message = ''
-    #     except Exception as e:
-    #         response.success = False
-    #         response.message = str(e)
-    #     return response
-
     def _count_pips_service(self, request, response):
         try:
             frame = asyncio.run(self._camera.getFrameAsync())
@@ -84,8 +69,9 @@ class CameraNode(Node):
         mask = cv2.inRange(hsv, mask_low, mask_high)
         kernel = np.ones((5, 5), np.uint8)
         mask_clean = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
-        mask_clean = cv2.dilate(mask_clean, kernel, iterations=1)
-        mask_clean = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+        mask_clean = cv2.morphologyEx(mask_clean, cv2.MORPH_OPEN, kernel)
+        mask_clean = cv2.dilate(mask_clean, np.ones((3, 3), np.uint8), iterations=1)
+        mask_clean = cv2.morphologyEx(mask_clean, cv2.MORPH_CLOSE, kernel)
         return mask_clean
 
 

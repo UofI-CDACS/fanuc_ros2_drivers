@@ -32,7 +32,7 @@ class Camera:
         else:
             mvsdk.CameraSetIspOutFormat(hCamera, mvsdk.CAMERA_MEDIA_TYPE_BGR8)
 
-        mvsdk.CameraSetTriggerMode(hCamera, 0)
+        mvsdk.CameraSetTriggerMode(hCamera, 1)
         mvsdk.CameraSetAeState(hCamera, 0)
         mvsdk.CameraSetExposureTime(hCamera, 30 * 1000)
         mvsdk.CameraPlay(hCamera)
@@ -46,6 +46,7 @@ class Camera:
 
     def getFrame(self):
         """Synchronous frame grab - use getFrameAsync in async contexts."""
+        mvsdk.CameraSoftTrigger(self.hCamera)
         # Increased timeout to 2000ms to be safe on GigE
         pRawData, FrameHead = mvsdk.CameraGetImageBuffer(self.hCamera, 2000)
         mvsdk.CameraImageProcess(self.hCamera, pRawData, self.pFrameBuffer, FrameHead)

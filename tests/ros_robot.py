@@ -111,7 +111,9 @@ class FanucRosNode(Node):
         onrobot_goal.force = 40
 
         self.get_logger().info("Gripping with OnRobot gripper" + (" opening" if open else " closing"))
-        return await self.__send_action_and_wait(self.onrobot_ac, onrobot_goal)
+        succ = await self.__send_action_and_wait(self.onrobot_ac, onrobot_goal)
+        await asyncio.sleep(5) #give it a moment to grip before moving again
+        return succ
 
     #Conveyor functions
     async def move_conveyor(self, direction):# 'forward', 'reverse' or 'stop'
