@@ -16,7 +16,10 @@ cube_grab_cart = [462.427,11.330,-178.959,179.417,.375,117.602]
 camera_cart_side = [547.867,531.840,-122.704,83.716,-62.295,-175.130]
 camera_cart = [542.683, 577.921, -120.016, 179.417, .375, 117.602]
 conveyor_back_cart = [-194.406,628.609,15.697, 179.417, .375, 117.602]
-conveyor_front_cart = [0]
+
+conveyor_front_cart_push = [145.722,933.601,5.105 ,179.417,.375,117.602]
+conveyor_front_cart_push_end = [145.722,757.725,5.105 ,179.417,.375,117.602]
+conveyor_front_cart_grab_center = [145.722,706.460,15.281,179.417,.375,117.602]
 
 async def main():
     #Create robot node
@@ -35,39 +38,40 @@ async def main():
     await robot.move_cartesian(cube_grab_cart)
     await robot.open_gripper_schunk('close')
     await robot.move_joints(rest_joint)
-
-    #Find dice
-    await identify_find_dice_routine(pip=1)
-
-    #await robot.move_joints(rest_joint)
-    
-    #grab dice from camera spot
+    #put cube in camera spot
     await robot.move_cartesian(camera_cart)
-    await robot.open_gripper_schunk('close')
-    await robot.move_cartesian(scoot(camera_cart,200))
-    #put dice on rear conveyor
-    await robot.move_cartesian(scoot(conveyor_back_cart,100))
-    await robot.move_cartesian(conveyor_back_cart)
     await robot.open_gripper_schunk('open')
-    await robot.move_cartesian(scoot(conveyor_back_cart,100))
+    await robot.move_joints(rest_joint)
 
-    #stop conveyor when right sensor is triggered
-    await robot.move_conveyor('forward')
-    while True:
-        sensor = await robot.read_conveyor_sensor("right")
-        if sensor:
-            await robot.move_conveyor('stop')
-            break
-        await asyncio.sleep(0.05)
+    #Loop through all odd faces on die
+    for i in range(1,6,2):
+        #Find dice
+        await identify_find_dice_routine(pip=i)
+        
+        #grab dice from camera spot
+        await robot.move_cartesian(camera_cart)
+        await robot.open_gripper_schunk('close')
+        await robot.move_cartesian(scoot(camera_cart,200))
+        #put dice on rear conveyor
+        await robot.move_cartesian(scoot(conveyor_back_cart,100))
+        await robot.move_cartesian(conveyor_back_cart)
+        await robot.open_gripper_schunk('open')
+        await robot.move_cartesian(scoot(conveyor_back_cart,100))
 
-    #publish dice ready
-    robot.set_dice_ready(True)
+        await wait_for_conveyor_sensor("right")
 
-    #grab dice from front conveyor
-    #put dice in camera spot
-    #find face with pip 2
-    #rotate to spot
-    pass
+        #publish dice ready
+        robot.set_dice_ready(True)
+
+        #Wait for other robot's signal that it's ready
+        while not await robot.request_dice_ready():
+            await asyncio.sleep(0.1)
+            
+        await grab_cube_from_conveyor()
+    
+    #End with everything back in starting position
+    await robot.move_joints(rest_joint)
+    await robot.open_gripper_schunk('open')
 
 
 #Direction 0 = x, 1 = y, 2 = z
@@ -102,27 +106,70 @@ async def test():
 
     # frame = await robot.get_overhead_camera_frame()
     #go to rest
+    # await robot.move_joints(rest_joint)
+    # #open gripper
+    # await robot.open_gripper_schunk('open')
+    # #grab cube
+    # await robot.move_cartesian(cube_grab_cart)
+    # await robot.open_gripper_schunk('close')
+    # await robot.move_joints(rest_joint)
+
+    # await robot.move_cartesian(scoot(camera_cart,200))
+    # #put dice on rear conveyor
+    # await robot.move_cartesian(scoot(conveyor_back_cart,100))
+    # await robot.move_cartesian(conveyor_back_cart)
+    # await robot.open_gripper_schunk('open')
+    # await robot.move_cartesian(scoot(conveyor_back_cart,100))
+
+    # #stop conveyor when right sensor is triggered
+    # await robot.move_conveyor('forward')
+    # while True:
+    #     sensor = await robot.read_conveyor_sensor("right")
+    #     if sensor:
+    #         await robot.move_conveyor('stop')
+    #         break
+    #     await asyncio.sleep(0.05)
+
     await robot.move_joints(rest_joint)
-    #open gripper
     await robot.open_gripper_schunk('open')
-    #grab cube
-    await robot.move_cartesian(cube_grab_cart)
-    await robot.open_gripper_schunk('close')
+
+    await grab_cube_from_conveyor()
+
     await robot.move_joints(rest_joint)
 
-    await robot.move_cartesian(scoot(camera_cart,200))
-    #put dice on rear conveyor
-    await robot.move_cartesian(scoot(conveyor_back_cart,100))
-    await robot.move_cartesian(conveyor_back_cart)
+async def grab_cube_from_conveyor():
+    #Grab from conveyor sequence
+    #Go to back push position
+    await robot.move_cartesian(scoot(conveyor_front_cart_push,200))
+    await robot.move_cartesian(conveyor_front_cart_push)
+    await robot.open_gripper_schunk('close')
+    #Go to end of push position
+    await robot.move_cartesian(conveyor_front_cart_push_end)
+    await robot.move_cartesian(scoot(conveyor_front_cart_push_end,100))
     await robot.open_gripper_schunk('open')
-    await robot.move_cartesian(scoot(conveyor_back_cart,100))
+    #Grab cube from center
+    await robot.move_cartesian(scoot(conveyor_front_cart_grab_center,100))
+    await robot.move_cartesian(conveyor_front_cart_grab_center)
+    await robot.open_gripper_schunk('close')
+    await robot.move_cartesian(scoot(conveyor_front_cart_grab_center,100))
+    #Set down cube in camera location
+    await robot.move_cartesian(scoot(camera_cart_center,100))
+    await robot.move_cartesian(camera_cart_center)
+    await robot.open_gripper_schunk('open')
+    await robot.move_cartesian(scoot(camera_cart_center,100))
+
+async def wait_for_conveyor_sensor(side="right"):
+    dir = 'forward' if side == "right" else 'reverse'
+    #stop conveyor when right sensor is triggered
+    await robot.move_conveyor(dir)
+    while True:
+        sensor = await robot.read_conveyor_sensor(side)
+        if sensor:
+            await robot.move_conveyor('stop')
+            break
+        await asyncio.sleep(0.05)
 
 async def identify_find_dice_routine(pip=1):
-    #put cube in camera spot
-    await robot.move_cartesian(camera_cart)
-    await robot.open_gripper_schunk('open')
-    await robot.move_joints(rest_joint)
-
     #take image
     side = await robot.get_dice_pip_count()
     #rotate cube
@@ -133,7 +180,7 @@ async def identify_find_dice_routine(pip=1):
     
     #identify dice location
     await robot.identify_dice_location(top=top, side=side, clockwise=False)
-    #find face with pip 1
+    #find face with pip
     move_sequence = await robot.find_face_with_pip(pip=pip, prefer_clockwise=False)
     #rotate to correct side
     await follow_move_instructions(move_sequence)
@@ -171,4 +218,4 @@ async def rotate_cube_z(clockwise=True):
     await robot.move_cartesian(scoot(camera_cart_center,50))
     #await robot.move_joints(rest_joint)
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(test())
