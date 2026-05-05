@@ -48,6 +48,7 @@ set(srv_files
    "srv/Mount.srv"
    "srv/SetSpeed.srv"
    "srv/CaptureAndCount.srv"
+   "srv/CaptureImage.srv"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}

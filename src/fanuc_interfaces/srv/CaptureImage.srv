@@ -1,0 +1,9 @@
+# Request: (empty — just trigger a capture)
+---
+# Response
+uint8[] image_data   # raw BGR bytes (row-major)
+int32 width
+int32 height
+int32 channels       # 1 = mono, 3 = BGR
+bool success
+string message
