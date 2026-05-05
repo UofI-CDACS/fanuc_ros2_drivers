@@ -1,0 +1,5 @@
+# Request: empty - just trigger a capture
+---
+# Response
+int32 pip_count   # 0 = detection failed, 1-6 = pip count
+bool success
