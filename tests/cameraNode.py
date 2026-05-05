@@ -18,8 +18,7 @@ class CameraNode(Node):
         super().__init__('camera_node')
         self._bridge = CvBridge()
         self._camera = Camera()
-        # self._pub = self.create_publisher(Image, 'camera/image_raw', 10)
-        # self.create_service(Trigger, 'camera/capture', self._capture)
+        
         self.create_service(Trigger, 'camera/count_pips', self._count_pips_service)
         self.get_logger().info('CameraNode ready — call /camera/capture to grab a frame')
 

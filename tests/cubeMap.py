@@ -3,6 +3,7 @@ import numpy as np
 class CubeMap:
     def __init__(self):
         self.map = np.zeros((6,1), dtype=int)
+        self.spins = np.zeros((6,1), dtype=int)
 
     #Initialixe map with known map
     def initialize_map(self, map):
@@ -104,6 +105,7 @@ class CubeMap:
 
         #Check if pip is on top
         if self.map[0] == pip:
+            self.spins[pip-1] = 2 + len(move_sequence)
             return move_sequence
 
         #check if pip is on the back, if so rotate 180 degrees on Z axis
@@ -119,6 +121,7 @@ class CubeMap:
         #Rotate on X axis until pip is on top, prefer clockwise for right robot and counterclockwise for left robot
         for i in range(4):
             if self.map[0] == pip:
+                self.spins[pip-1] = 2 + len(move_sequence)
                 return move_sequence
             if prefer_clockwise:
                 self.rotate_cube_x_axis(clockwise=True)
@@ -132,6 +135,11 @@ class CubeMap:
         print(f"    {self.map[4]}")
         print(f"{self.map[3]} {self.map[0]} {self.map[1]} {self.map[2]}")
         print(f"    {self.map[5]}")
+        s = ""
+        for i in range(6):
+            s += f"{i+1}:{self.spins[i]}, "
+        print(s, "Total spins:",np.sum(self.spins))
+        print("------")
 
 if __name__ == "__main__":
     cube = CubeMap()

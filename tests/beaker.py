@@ -1,12 +1,8 @@
 #12:45 - 2:45 friday May 15th
 import asyncio
-from camera import Camera
-import numpy as np
 import rclpy
-from rclpy.node import Node
 import ros_robot
 from ros_robot import FanucRosNode
-import cv2
 
 # Constants
 rest_joint = [18.446,-7.714,-12.393,.285,-76.969,99.095]
@@ -17,8 +13,8 @@ camera_cart_side = [547.867,531.840,-122.704,83.716,-62.295,-175.130]
 camera_cart = [542.683, 577.921, -120.016, 179.417, .375, 117.602]
 conveyor_back_cart = [-194.406,628.609,15.697, 179.417, .375, 117.602]
 
-conveyor_front_cart_push = [145.722,933.601,5.105 ,179.417,.375,117.602]
-conveyor_front_cart_push_end = [145.722,757.725,5.105 ,179.417,.375,117.602]
+conveyor_front_cart_push = [145.722,933.601,-2.863 ,179.417,.375,117.602]
+conveyor_front_cart_push_end = [145.722,757.725,-2.863 ,179.417,.375,117.602]
 conveyor_front_cart_grab_center = [145.722,706.460,15.281,179.417,.375,117.602]
 
 async def main():
@@ -41,7 +37,7 @@ async def main():
     #put cube in camera spot
     await robot.move_cartesian(camera_cart)
     await robot.open_gripper_schunk('open')
-    await robot.move_joints(rest_joint)
+    await robot.move_cartesian(scoot(camera_cart,100))
 
     #Loop through all odd faces on die
     for i in range(1,6,2):
@@ -65,9 +61,9 @@ async def main():
 
         #Wait for other robot's signal that it's ready
         while not await robot.request_dice_ready():
-            await asyncio.sleep(0.1)
-            
-        await grab_cube_from_conveyor()
+            await asyncio.sleep(5)
+
+        await grab_cube_conveyor()
     
     #End with everything back in starting position
     await robot.move_joints(rest_joint)
@@ -88,56 +84,10 @@ async def test():
     executor.add_node(robot)
     asyncio.create_task(ros_robot.spin_robot(executor))
     
-    # robot.set_dice_ready(True)
-    # on = await robot1.request_dice_ready()
-    # await robot.identify_dice_location(top=3, side=1, clockwise=True)
-    # move = await robot.find_face_with_pip(pip=5, prefer_clockwise=True)
-    # print("Move sequence to get 5 pip face on top:", move)
-
-    # pips = await robot.get_dice_pip_count()
-    # print("Pip count:", pips)
-
-    #sensor = await robot.read_conveyor_sensor()
-    #print("Sensor reading:", sensor)
-
-    # await robot.move_conveyor('forward')
-    # await asyncio.sleep(5)
-    # await robot.move_conveyor('stop')
-
-    # frame = await robot.get_overhead_camera_frame()
-    #go to rest
-    # await robot.move_joints(rest_joint)
-    # #open gripper
-    # await robot.open_gripper_schunk('open')
-    # #grab cube
-    # await robot.move_cartesian(cube_grab_cart)
-    # await robot.open_gripper_schunk('close')
-    # await robot.move_joints(rest_joint)
-
-    # await robot.move_cartesian(scoot(camera_cart,200))
-    # #put dice on rear conveyor
-    # await robot.move_cartesian(scoot(conveyor_back_cart,100))
-    # await robot.move_cartesian(conveyor_back_cart)
-    # await robot.open_gripper_schunk('open')
-    # await robot.move_cartesian(scoot(conveyor_back_cart,100))
-
-    # #stop conveyor when right sensor is triggered
-    # await robot.move_conveyor('forward')
-    # while True:
-    #     sensor = await robot.read_conveyor_sensor("right")
-    #     if sensor:
-    #         await robot.move_conveyor('stop')
-    #         break
-    #     await asyncio.sleep(0.05)
-
-    await robot.move_joints(rest_joint)
-    await robot.open_gripper_schunk('open')
-
-    await grab_cube_from_conveyor()
-
+    await grab_cube_conveyor()
     await robot.move_joints(rest_joint)
 
-async def grab_cube_from_conveyor():
+async def grab_cube_conveyor():
     #Grab from conveyor sequence
     #Go to back push position
     await robot.move_cartesian(scoot(conveyor_front_cart_push,200))
@@ -170,6 +120,8 @@ async def wait_for_conveyor_sensor(side="right"):
         await asyncio.sleep(0.05)
 
 async def identify_find_dice_routine(pip=1):
+    #move out of the way of the camera
+    await robot.move_joints(rest_joint)
     #take image
     side = await robot.get_dice_pip_count()
     #rotate cube
@@ -218,4 +170,4 @@ async def rotate_cube_z(clockwise=True):
     await robot.move_cartesian(scoot(camera_cart_center,50))
     #await robot.move_joints(rest_joint)
 if __name__ == "__main__":
-    asyncio.run(test())
+    asyncio.run(main())
