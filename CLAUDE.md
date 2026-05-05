@@ -103,3 +103,113 @@ Two FANUC TP programs must be loaded on the controller before running:
 - `ros2_eip_mainv2.tp` — run in the foreground when ROS2 control is needed
 
 Both are in `FANUC_TP_Program/`.
+
+---
+
+## Session Log — 2026-05-04
+
+### What Was Built
+
+This session added the full `dice_game` package and wired up Modbus state reporting for Robot 1 (Beaker). The project was also pushed to GitHub and shared with a partner.
+
+### Files Changed / Created
+
+| File | What changed |
+|---|---|
+| `src/dice_game/dice_game/robot1_controller.py` | Main file — see details below |
+| `src/dice_game/launch/robot1.launch.py` | Added `modbus_ip` CLI parameter |
+| `src/fanuc_interfaces/CMakeLists.txt` | Added `CaptureImage.srv` to build |
+| `src/fanuc_interfaces/srv/CaptureImage.srv` | New service definition for camera capture |
+
+---
+
+### robot1_controller.py — Changes in Detail
+
+#### 1. Wrist Rotation to Find Target Pip
+
+Previously the robot picked the die, took one photo, and if the pip count was wrong it put the die back down and re-picked (relying on random re-orientation). Now it actively rotates.
+
+**New constant:**
+```python
+CAMERA_ROTATION_STEPS = [0, 60, 120, 180, -120, -60]  # degrees offset on CAMERA_POSE['r']
+```
+
+**New method `_capture_count_at(label)`** — captures and counts pips at the current robot position without moving first. Refactored out of `_capture_and_count`.
+
+**New method `_find_pip_rotating(target, label)`** — moves to camera pose, then steps through each 60° wrist rotation, taking a photo at each position. Returns as soon as the target pip count is found (robot stays at that rotation). Returns `0` if target is not found on any face. Used in both Phase 1 (find pip=1) and Phase 2 (sequential 1→6).
+
+The die is only put back down and re-picked if the target pip is not visible on any of the 6 rotational positions.
+
+#### 2. Modbus State Reporting
+
+Beaker connects as a **Modbus TCP client** to Bunsen's machine (Robot 2) and writes its state throughout the game so Bunsen can coordinate.
+
+**Modbus registers/coils:**
+| Name | Type | Address | Values |
+|---|---|---|---|
+| State | Holding register | 0 | 1–9 (see states below) |
+| Pip count | Holding register | 1 | 0–6 |
+| Ready | Coil | 0 | True/False |
+
+**States (`State` IntEnum):**
+| Value | Name | When set |
+|---|---|---|
+| 1 | SETUP | On startup, waiting for servers |
+| 2 | WAIT | After go_home, waiting for die return |
+| 3 | GRAB_DIE | Before pick_dice() |
+| 4 | PIP_COUNT | First rotation position (r_offset=0°) |
+| 5 | ROTATE_PIP | Each subsequent rotation step |
+| 6 | PLACE_DIE | Before place_on_conveyor() |
+| 7 | FINISH | After all 6 targets delivered |
+| 8 | RECOVER | When target pip not found, re-picking |
+| 9 | FAULT | On timeout or unhandled exception |
+
+**New helpers:** `_modbus_connect(ip)`, `_set_state(state)`, `_set_pip(pips)`, `_set_ready(ready)` — all silently do nothing if Modbus is not connected, so the robot still works without a Modbus server.
+
+**New dependency:** `pip3 install pymodbus`
+
+#### 3. Launch File
+
+`modbus_ip` added as a CLI parameter:
+```bash
+ros2 launch dice_game robot1.launch.py robot_name:=Beaker robot_ip:=10.8.4.16 modbus_ip:=<bunsen_ip>
+```
+
+---
+
+### Running Robot 1 Only (Beaker)
+
+You need **three** terminals:
+
+**Terminal 1 — FANUC driver nodes** (action servers, publishers, services):
+```bash
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+ros2 launch launch/start.launch.py robot_name:=Beaker robot_ip:=10.8.4.16
+```
+
+**Terminal 2 — Game controller + camera**:
+```bash
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
+ros2 launch dice_game robot1.launch.py robot_name:=Beaker robot_ip:=10.8.4.16 modbus_ip:=<bunsen_ip>
+```
+
+Also requires the FANUC TP programs running on the controller before starting.
+
+---
+
+### GitHub Setup
+
+- Repo: **https://github.com/ColinClang/Dice_game** (private)
+- Branch: `v1.1`
+- Collaborator: `JonPal7756` (write access)
+
+**Daily workflow:**
+```bash
+git add <files>
+git commit -m "description"
+git push
+
+git pull   # to get partner's changes
+```
