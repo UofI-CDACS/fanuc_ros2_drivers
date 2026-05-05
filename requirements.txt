@@ -1,0 +1,5 @@
+pycomm3
+pynput
+opencv-python
+numpy<2  # ROS Jazzy cv_bridge is compiled against numpy 1.x ABI; do not bump
+evdev
