@@ -351,40 +351,28 @@ class robot:
         """! Controls conveyor belt
         @param command          string 'forward' or 'reverse' or 'stop'
         """
+        # R21=forward, R22=reverse, R2=sync trigger
+        forward_register  = 21
+        reverse_register  = 22
+        sync_register     = 2
 
-        #R21 is forward
-        #R22 is reverse
-        forward_register = 21
-        reverse_register = 22
-        on = 1
-        off = 0
-        sync_register = 2
-        sync_value = 1
+        # Reset sync to 0 first so the TP sees a clean 0→1 rising edge.
+        # Without this, the second call leaves R2=1 and the TP ignores it.
+        FANUCethernetipDriver.writeR_Register(self.robot_IP, sync_register, 0)
 
         if command == 'forward':
-            # Make sure belt is not moving
-            FANUCethernetipDriver.writeR_Register(self.robot_IP, reverse_register, off)
-            FANUCethernetipDriver.writeR_Register(self.robot_IP, forward_register, off)
-            FANUCethernetipDriver.writeR_Register(self.robot_IP, sync_register, sync_value)
-
-            FANUCethernetipDriver.writeR_Register(self.robot_IP, forward_register, on)
-            ## Set sync bit to update
-            FANUCethernetipDriver.writeR_Register(self.robot_IP, sync_register, sync_value)
+            FANUCethernetipDriver.writeR_Register(self.robot_IP, reverse_register, 0)
+            FANUCethernetipDriver.writeR_Register(self.robot_IP, forward_register, 1)
         elif command == 'reverse':
-            FANUCethernetipDriver.writeR_Register(self.robot_IP, reverse_register, off)
-            FANUCethernetipDriver.writeR_Register(self.robot_IP, forward_register, off)
-            FANUCethernetipDriver.writeR_Register(self.robot_IP, sync_register, sync_value)
-
-            FANUCethernetipDriver.writeR_Register(self.robot_IP, reverse_register, on)
-            ## Set sync bit to update
-            FANUCethernetipDriver.writeR_Register(self.robot_IP, sync_register, sync_value)
+            FANUCethernetipDriver.writeR_Register(self.robot_IP, forward_register, 0)
+            FANUCethernetipDriver.writeR_Register(self.robot_IP, reverse_register, 1)
         elif command == 'stop':
-            FANUCethernetipDriver.writeR_Register(self.robot_IP, reverse_register, off)
-            FANUCethernetipDriver.writeR_Register(self.robot_IP, forward_register, off)
-            ## Set sync bit to update
-            FANUCethernetipDriver.writeR_Register(self.robot_IP, sync_register, sync_value)
+            FANUCethernetipDriver.writeR_Register(self.robot_IP, reverse_register, 0)
+            FANUCethernetipDriver.writeR_Register(self.robot_IP, forward_register, 0)
         else:
             raise Warning(f"Conveyor only supports 'forward', 'reverse' or 'stop' strings")
+
+        FANUCethernetipDriver.writeR_Register(self.robot_IP, sync_register, 1)
 
 
     def read_robot_connection_bit(self) -> int:

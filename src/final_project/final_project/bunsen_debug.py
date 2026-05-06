@@ -8,6 +8,7 @@ Usage (from any directory):
 """
 
 import os
+import signal
 import sys
 import time
 
@@ -49,7 +50,7 @@ from modbus_server import (
     STATE_RECOVER, STATE_FAULT, STATE_NAMES,
 )
 
-MENU = """
+_MENU_STATIC = """
 ╔══════════════════════════════════════════════╗
 ║       BUNSEN DEBUG — state runner            ║
 ║       (via ROS2 action clients)              ║
@@ -64,8 +65,48 @@ MENU = """
 ║  8  Recover     (set context first)          ║
 ║  9  Fault       (set context first)          ║
 ║  r  Dump Modbus registers & coils            ║
+╠══════════════════════════════════════════════╣
+║  DIRECT COMMANDS                             ║
+║  o    Gripper open  (OnRobot width/force)    ║
+║  k    Gripper close (OnRobot width/force)    ║
+║  ff   Front conveyor forward                 ║
+║  fb   Front conveyor reverse                 ║
+║  fs   Front conveyor stop                    ║
+║  ft   Front conveyor timed (asks dir+secs)   ║
+║  j    Go to home joints                      ║
+║  d1–d5  Define / overwrite stored pose       ║
 ║  q  Quit                                     ║
 ╚══════════════════════════════════════════════╝"""
+
+
+def _print_menu():
+    print(_MENU_STATIC)
+    print('  Stored poses  (edit POSE_1–5 at top of file, then restart):')
+    for slot, p in sorted(_stored_poses.items()):
+        if 'joint1' in p:
+            print(f'    p{slot} [JOINT]'
+                  f'  J1={p["joint1"]:7.2f}  J2={p["joint2"]:7.2f}  J3={p["joint3"]:7.2f}'
+                  f'  J4={p["joint4"]:7.2f}  J5={p["joint5"]:7.2f}  J6={p["joint6"]:7.2f}')
+        else:
+            print(f'    p{slot} [CART] '
+                  f'  x={p["x"]:8.2f}  y={p["y"]:8.2f}  z={p["z"]:8.2f}'
+                  f'  w={p["w"]:8.3f}  p={p["p"]:7.3f}  r={p["r"]:8.3f}')
+    print()
+
+# ---------------------------------------------------------------------------
+# Stored test poses — edit these directly, then re-run the script.
+# p1–p5 in the menu move to these. d1–d5 overwrite them at runtime.
+# w/p/r = 200.0 means "keep current orientation" (FANUC driver sentinel).
+# ---------------------------------------------------------------------------
+# p1–p3: joint positions  (joint1–joint6, degrees)
+# p4–p5: Cartesian        (x,y,z mm  w,p,r degrees; 200.0 = keep current)
+POSE_1 = dict(joint1=-49.388, joint2=36.993, joint3=24.010, joint4=67.703, joint5=-51.149, joint6=119.961)
+POSE_2 = dict(joint1=-70.999, joint2=51.903, joint3=8.141, joint4=174.404, joint5=-79.550, joint6=23.121)
+POSE_3 = dict(joint1=0.0, joint2=0.0, joint3=0.0, joint4=0.0, joint5=-90.0, joint6=0.0)
+POSE_4 = dict(x=126.961, y=-582.177, z=152.102, w=-175.773, p=0.668, r=-89.634)
+POSE_5 = dict(x=126.961, y=-582.177, z=52.102, w=-175.773, p=0.668, r=-89.634)
+
+_stored_poses: dict = {'1': POSE_1, '2': POSE_2, '3': POSE_3, '4': POSE_4, '5': POSE_5}
 
 
 def _ask(prompt, default=''):
@@ -90,8 +131,52 @@ def _confirm(prompt):
 def _make_bunsen_debug():
     BunsenMaster = _make_ros2_master()
 
+    import rclpy
+    from rclpy.action import ActionClient
+    from fanuc_interfaces.action import OnRobotGripper, Conveyor
+
     class BunsenDebug(BunsenMaster):
         """BunsenMaster wired to the live action servers; camera replaced by manual input."""
+
+        def __init__(self):
+            super().__init__()
+            ns         = os.environ.get('BUNSEN_NAME', 'Bunsen')
+            front_name = os.environ.get('FRONT_CONV_NAME', 'Bunsen')
+
+            self.onrobot_ac    = ActionClient(self, OnRobotGripper, f'/{ns}/onrobot_gripper')
+            self.front_conv_ac = ActionClient(self, Conveyor, f'/{front_name}/conveyor')
+
+        def _send_onrobot(self, width: int, force: int) -> bool:
+            if not self.onrobot_ac.wait_for_server(timeout_sec=5.0):
+                print('  [WARN] OnRobot gripper server not available (timeout 5 s)')
+                return False
+            goal = OnRobotGripper.Goal()
+            goal.width = width
+            goal.force = force
+            fut = self.onrobot_ac.send_goal_async(goal)
+            rclpy.spin_until_future_complete(self, fut)
+            gh = fut.result()
+            if not gh.accepted:
+                return False
+            res = gh.get_result_async()
+            rclpy.spin_until_future_complete(self, res)
+            return res.result().result.success
+
+        def _send_conv(self, ac, command: str) -> bool:
+            if not ac.wait_for_server(timeout_sec=5.0):
+                print('  [WARN] Conveyor server not available (timeout 5 s)')
+                print('         Check FRONT_CONV_NAME / REAR_CONV_NAME env vars')
+                return False
+            goal = Conveyor.Goal()
+            goal.command = command
+            fut = ac.send_goal_async(goal)
+            rclpy.spin_until_future_complete(self, fut)
+            gh = fut.result()
+            if not gh.accepted:
+                return False
+            res = gh.get_result_async()
+            rclpy.spin_until_future_complete(self, res)
+            return res.result().result.success
 
         def _capture_pip(self):
             deadline = time.time() + 30.0
@@ -239,6 +324,80 @@ class DebugMenu:
         self.n.state = STATE_FAULT
         self.n._state_fault()
 
+    # ---- direct commands ---------------------------------------------------
+
+    def do_gripper_open(self):
+        width = _ask_int('Open width mm [0-160]', 80)
+        force = _ask_int('Force N [0-120]', 20)
+        ok = self.n._send_onrobot(width, force)
+        print(f'  Gripper open → {"OK" if ok else "FAILED"}')
+
+    def do_gripper_close(self):
+        width = _ask_int('Close width mm [0-160]', 30)
+        force = _ask_int('Force N [0-120]', 60)
+        ok = self.n._send_onrobot(width, force)
+        print(f'  Gripper close → {"OK" if ok else "FAILED"}')
+
+    def _conv_cmd(self, ac, label: str, command: str):
+        ok = self.n._send_conv(ac, command)
+        print(f'  {label} {command} → {"OK" if ok else "FAILED"}')
+
+    def do_conv_timed(self):
+        direction = ''
+        while direction not in ('f', 'b'):
+            direction = _ask('Direction  f=forward  b=reverse', 'f').strip().lower()
+        secs = float(_ask('Run for seconds', '2.0'))
+        command = 'forward' if direction == 'f' else 'reverse'
+        print(f'  Front conv {command} for {secs:.2f} s …')
+        ok = self.n._send_conv(self.n.front_conv_ac, command)
+        if not ok:
+            print('  Start FAILED — not running timer.')
+            return
+        try:
+            time.sleep(secs)
+        except KeyboardInterrupt:
+            print('\n  Interrupted — sending stop.')
+        ok2 = self.n._send_conv(self.n.front_conv_ac, 'stop')
+        print(f'  Stop → {"OK" if ok2 else "FAILED"}')
+
+    def do_home_joints(self):
+        ok = self.n._send_joint(**HOME_JOINTS)
+        print(f'  Home joints → {"OK" if ok else "FAILED"}')
+
+    # ---- stored position slots (1–5) ---------------------------------------
+
+    def do_define_pose(self, slot: str):
+        print(f'  Define pose slot {slot} (press Enter to keep current value):')
+        existing = _stored_poses.get(slot)
+        is_joint = (existing is not None and 'joint1' in existing) or slot in ('1', '2', '3')
+        if is_joint:
+            default = existing if existing and 'joint1' in existing else dict(joint1=0.0, joint2=0.0, joint3=0.0, joint4=0.0, joint5=-90.0, joint6=0.0)
+            pose = {}
+            for key in ('joint1', 'joint2', 'joint3', 'joint4', 'joint5', 'joint6'):
+                pose[key] = float(_ask(key, default[key]))
+        else:
+            default = existing if existing else dict(x=0.0, y=0.0, z=0.0, w=200.0, p=200.0, r=200.0)
+            pose = {}
+            for key in ('x', 'y', 'z', 'w', 'p', 'r'):
+                pose[key] = float(_ask(key, default[key]))
+        _stored_poses[slot] = pose
+        print(f'  Slot {slot} saved: {pose}')
+
+    def do_move_pose(self, slot: str):
+        if slot not in _stored_poses:
+            print(f'  Slot {slot} is empty — define it first with d{slot}')
+            if _confirm('Define it now?'):
+                self.do_define_pose(slot)
+            else:
+                return
+        pose = _stored_poses[slot]
+        print(f'  Moving to slot {slot}: {pose}')
+        if 'joint1' in pose:
+            ok = self.n._send_joint(**pose)
+        else:
+            ok = self.n._send_cart(**pose)
+        print(f'  Move → {"OK" if ok else "FAILED"}')
+
     # ---- main loop ---------------------------------------------------------
 
     def run(self):
@@ -248,14 +407,37 @@ class DebugMenu:
             '5': self.do_position_pip, '6': self.do_place_die,
             '7': self.do_finish,  '8': self.do_recover,
             '9': self.do_fault,   'r': self._dump,
+            'o': self.do_gripper_open,
+            'k': self.do_gripper_close,
+            'j': self.do_home_joints,
         }
         while True:
-            print(MENU)
-            choice = input('Choice: ').strip().lower()
-            if choice == 'q':
+            _print_menu()
+            choice = input('Choice: ').strip()
+
+            if choice.lower() == 'q':
                 print('Bye.')
                 break
-            fn = dispatch.get(choice)
+
+            # Conveyor commands
+            if choice == 'ff':
+                fn = lambda: self._conv_cmd(self.n.front_conv_ac, 'Front conv', 'forward')
+            elif choice == 'fb':
+                fn = lambda: self._conv_cmd(self.n.front_conv_ac, 'Front conv', 'reverse')
+            elif choice == 'fs':
+                fn = lambda: self._conv_cmd(self.n.front_conv_ac, 'Front conv', 'stop')
+            elif choice == 'ft':
+                fn = self.do_conv_timed
+            # Stored pose slots
+            elif len(choice) == 2 and choice[0] == 'p' and choice[1] in '12345':
+                slot = choice[1]
+                fn = lambda s=slot: self.do_move_pose(s)
+            elif len(choice) == 2 and choice[0] == 'd' and choice[1] in '12345':
+                slot = choice[1]
+                fn = lambda s=slot: self.do_define_pose(s)
+            else:
+                fn = dispatch.get(choice.lower())
+
             if fn is None:
                 print('  Unknown option.')
                 continue
@@ -280,6 +462,12 @@ def main():
 
     print(f'Connecting to Modbus at {mb_host}:{mb_port} ...')
     rclpy.init()
+
+    # rclpy installs a SIGINT handler that calls rclpy.shutdown(), which
+    # invalidates the node context and breaks all subsequent action calls.
+    # Override it so Ctrl+C only raises KeyboardInterrupt (caught by the menu
+    # loop), leaving the context intact for the next command.
+    signal.signal(signal.SIGINT, lambda _s, _f: (_ for _ in ()).throw(KeyboardInterrupt()))
 
     BunsenDebug = _make_bunsen_debug()
     node = BunsenDebug()

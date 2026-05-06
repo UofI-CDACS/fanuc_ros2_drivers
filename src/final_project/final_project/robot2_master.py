@@ -48,13 +48,17 @@ POLL_INTERVAL        = 0.2
 HOME_JOINTS = dict(joint1=0.0, joint2=0.0, joint3=0.0,
                    joint4=0.0, joint5=-90.0, joint6=0.0)
 
-CONVEYOR_WAIT_POSE = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)  # CALIBRATE
+CONVEYOR_WAIT_POSE = dict(x=-72.719, y=-404.0, z=352.581, w=-175.773, p=0.668, r=-89.634)
 
-REAR_CONV_ABOVE  = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)    # CALIBRATE
-REAR_CONV_PICKUP = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)    # CALIBRATE
+REAR_CONV_ABOVE  = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)     # CALIBRATE
+REAR_CONV_PICKUP = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)     # CALIBRATE
 
-CAM_POSE_1 = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)          # CALIBRATE
-CAM_POSE_2 = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)          # CALIBRATE
+FRONT_CONV_ABOVE  = dict(x=126.961, y=-582.177, z=152.102, w=-175.773, p=0.668, r=-89.634)
+FRONT_CONV_PLACE  = dict(x=126.961, y=-582.177, z=52.102, w=-175.773, p=0.668, r=-89.634)
+FRONT_CONV_PICKUP = FRONT_CONV_PLACE  # alias
+
+CAM_POSE_1 = dict(joint1=-70.999, joint2=51.903, joint3=8.141, joint4=174.404, joint5=-79.550, joint6=23.121)     
+CAM_POSE_2 = dict(joint1=-70.999, joint2=51.903, joint3=8.141, joint4=174.404, joint5=-79.550, joint6=23.121)
 
 ROT_TILT_AWAY   = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)     # front→top  CALIBRATE
 ROT_TILT_TOWARD = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)     # back→top   CALIBRATE
@@ -63,11 +67,8 @@ ROT_ROLL_RIGHT  = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)     # left→to
 ROT_FLIP_1      = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)     # flip step1 CALIBRATE
 ROT_FLIP_2      = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)     # flip step2 CALIBRATE
 
-FRONT_CONV_ABOVE  = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)   # CALIBRATE
-FRONT_CONV_PLACE  = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)   # CALIBRATE
-
-FINAL_PLACE_ABOVE = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)   # CALIBRATE
-FINAL_PLACE_DOWN  = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)   # CALIBRATE
+FINAL_PLACE_ABOVE = dict(x=450.577, y=3.423, z=0.0, w=-175.671, p=0.681, r=-89.632)
+FINAL_PLACE_DOWN  = dict(x=450.577, y=3.423, z=-141.722, w=-175.671, p=0.681, r=-89.632)
 
 # ---------------------------------------------------------------------------
 # Die orientation math
@@ -562,7 +563,9 @@ def _make_ros2_master():
             self._log_info('Action servers ready.')
 
         def _send_cart(self, **kwargs):
-            self.cart_ac.wait_for_server()
+            if not self.cart_ac.wait_for_server(timeout_sec=5.0):
+                self._log_error('CartPose server not available (timeout 5 s)')
+                return False
             goal = CartPose.Goal()
             for k, v in kwargs.items():
                 setattr(goal, k, float(v))
@@ -575,7 +578,9 @@ def _make_ros2_master():
             return res.result().result.success
 
         def _send_joint(self, **kwargs):
-            self.joint_ac.wait_for_server()
+            if not self.joint_ac.wait_for_server(timeout_sec=5.0):
+                self._log_error('JointPose server not available (timeout 5 s)')
+                return False
             goal = JointPose.Goal()
             for k, v in kwargs.items():
                 setattr(goal, k, float(v))
@@ -588,7 +593,9 @@ def _make_ros2_master():
             return res.result().result.success
 
         def _send_gripper(self, command):
-            self.gripper_ac.wait_for_server()
+            if not self.gripper_ac.wait_for_server(timeout_sec=5.0):
+                self._log_error('SchunkGripper server not available (timeout 5 s)')
+                return False
             goal = SchunkGripper.Goal()
             goal.command = command
             fut = self.gripper_ac.send_goal_async(goal)
@@ -600,7 +607,9 @@ def _make_ros2_master():
             return res.result().result.success
 
         def _run_conveyor(self, command):
-            self.conveyor_ac.wait_for_server()
+            if not self.conveyor_ac.wait_for_server(timeout_sec=5.0):
+                self._log_error('Conveyor server not available (timeout 5 s)')
+                return False
             goal = Conveyor.Goal()
             goal.command = command
             fut = self.conveyor_ac.send_goal_async(goal)

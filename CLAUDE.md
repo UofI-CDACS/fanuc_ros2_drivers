@@ -213,3 +213,53 @@ git push
 
 git pull   # to get partner's changes
 ```
+
+---
+
+## Session Log — 2026-05-05 (Bunsen side)
+
+### What Was Merged
+
+Pulled partner's `dice_game/v1.1` commits into `final_project`. Applied fixes and improvements to `robot1_master.py` and `camera.py`.
+
+### Files Changed
+
+| File | What changed |
+|---|---|
+| `src/final_project/final_project/robot1_master.py` | Conveyor bug fixes, camera fallback, updated positions |
+| `src/final_project/final_project/camera.py` | Fixed trigger mode 0 → 1 (software trigger) |
+| `test_conveyor.py` | Copied from partner — standalone belt timing test |
+
+### robot1_master.py — Changes in Detail
+
+#### 1. `receive_from_bunsen()` conveyor bug fixed
+
+Was incorrectly calling `_run_conveyor('forward')` (Beaker's rear belt) during a receive operation. Beaker does not control the front conveyor — Bunsen does. Beaker only writes `CONV_FRONT_RUNNING` as a Modbus signal; Bunsen starts its own belt. Removed all `_run_conveyor` calls from `receive_from_bunsen()`.
+
+#### 2. `send_to_bunsen()` now runs rear belt
+
+Was dropping die on belt but never running it. Added:
+```python
+self._run_conveyor('forward')
+time.sleep(REAR_CONVEYOR_TRAVEL_SECS)
+self._run_conveyor('stop')
+```
+New constant `REAR_CONVEYOR_TRAVEL_SECS = 5.0` (tune to match physical belt length).
+
+#### 3. Camera fallback
+
+`wait_for_service()` was blocking forever. Now uses `timeout_sec=5.0` — if camera not found, robot still runs through all motions and assumes correct pip (for testing without camera). Added `_camera_ok` flag.
+
+#### 4. Conveyor positions updated
+
+Replaced placeholder `CONV_ABOVE`/`CONV_DROP`/`FRONT_CONV_ABOVE`/`FRONT_CONV_PICKUP` with partner's calibrated coordinates:
+- `CONV_REAR_ABV`, `CONV_REAR_DRP` — calibrated rear conveyor drop positions
+- `CONV_FRNT_ABV`, `CONV_FRNT_DWN` — front conveyor pickup positions (still need physical verify)
+
+#### 5. `receive_from_bunsen()` now takes camera token back
+
+After `CONV_DIE_ON_FRONT` confirmed, Beaker writes `COIL_CAMERA_CLIENT=False` to reclaim camera before picking up the die.
+
+### camera.py — Trigger Mode Fix
+
+`CameraSetTriggerMode(hCamera, 0)` → `CameraSetTriggerMode(hCamera, 1)` (software trigger mode required for single-frame capture).

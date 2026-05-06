@@ -33,22 +33,23 @@ from modbus_server import (
     CONV_DIE_ON_FRONT, CONV_BEAKER_HAS_DIE,
 )
 
-POLL_INTERVAL        = 0.2
-CONV_TIMEOUT         = 60.0
-CONVEYOR_TRAVEL_SECS = 5.0
+POLL_INTERVAL             = 0.2
+CONV_TIMEOUT              = 60.0
+REAR_CONVEYOR_TRAVEL_SECS = 5.0   # tune: time for die to travel rear belt to Bunsen
+CONVEYOR_TRAVEL_SECS      = 5.0   # tune: time for die to travel front belt to Beaker
 
 # ── Beaker positions (calibrated by partner) ──────────────────────────────────
 HOME_JOINTS = (1.1, 1.5, -2.0, -1.7, -88.6, -30.0)
 
-PICK_ABOVE  = dict(x=470.0, y=-15.0,  z=-18.0,  w=179.9, p=0.0,   r=30.0)
-PICK_DOWN   = dict(x=470.0, y=-15.0,  z=-185.0, w=179.9, p=0.0,   r=30.0)
-CAMERA_POSE = dict(x=490.0, y=890.0,  z=881.0,  w=73.0,  p=-66.0, r=-170.0)
-CONV_ABOVE  = dict(x=470.0, y=-15.0,  z=-18.0,  w=179.9, p=0.0,   r=120.0)
-CONV_DROP   = dict(x=470.0, y=-15.0,  z=-185.0, w=179.9, p=0.0,   r=120.0)
+PICK_ABOVE    = dict(x=470.0,    y=-15.0,   z=-18.0,   w=179.9, p=0.0, r=30.0)
+PICK_DOWN     = dict(x=470.0,    y=-15.0,   z=-185.0,  w=179.9, p=0.0, r=30.0)
+CAMERA_POSE   = dict(x=490.0,    y=890.0,   z=881.0,   w=73.0,  p=-66.0, r=-170.0)
+CONV_REAR_ABV = dict(x=-194.112, y=617.369, z=200.840, w=179.9, p=0.0, r=120.0)
+CONV_REAR_DRP = dict(x=-194.112, y=617.369, z=8.840,   w=179.9, p=0.0, r=120.0)
 
 # Front conveyor — Bunsen sends die back here after verifying pip
-FRONT_CONV_ABOVE  = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)  # CALIBRATE
-FRONT_CONV_PICKUP = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)  # CALIBRATE
+CONV_FRNT_ABV = dict(x=142.579, y=617.369, z=200.168, w=179.9, p=0.0, r=120.0)  # CALIBRATE
+CONV_FRNT_DWN = dict(x=142.579, y=617.369, z=8.168,   w=179.9, p=0.0, r=120.0)  # CALIBRATE
 
 # 60° wrist rotation steps — covers all 6 die faces in one sweep
 CAMERA_ROTATION_STEPS = [0, 60, 120, 180, -120, -60]
@@ -75,6 +76,7 @@ class Robot1Master(Node):
         self.get_logger().info(f'Modbus connected to {mb_host}:{mb_port}')
 
         self.r1_retries = 0
+        self._camera_ok = False
 
     # ── Modbus helpers ────────────────────────────────────────────────────────
 
@@ -155,8 +157,10 @@ class Robot1Master(Node):
 
     def _capture(self) -> int:
         """Call CaptureAndCount service; returns pip count or 0 on failure."""
+        if not self._camera_ok:
+            time.sleep(0.4)
+            return -1
         time.sleep(0.4)
-        self._cam.wait_for_service()
         fut = self._cam.call_async(CaptureAndCount.Request())
         rclpy.spin_until_future_complete(self, fut)
         resp = fut.result()
@@ -170,9 +174,19 @@ class Robot1Master(Node):
         Move to camera pose and step through 6 wrist rotations (60° each),
         capturing at each position.  Returns pip count when target is found,
         or 0 if not found on any face.  Robot stays at the matching rotation.
+        If camera is unavailable, steps through all rotations and returns target
+        so the game keeps moving.
         """
         self.get_logger().info(f'Scanning for pip={target} (wrist rotation sweep)')
         self._send_cart(**CAMERA_POSE)
+
+        if not self._camera_ok:
+            self.get_logger().warn('No camera — stepping all rotations and assuming target found')
+            for i, r_offset in enumerate(CAMERA_ROTATION_STEPS):
+                if r_offset != 0:
+                    self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
+                time.sleep(0.4)
+            return target
 
         for i, r_offset in enumerate(CAMERA_ROTATION_STEPS):
             if r_offset != 0:
@@ -220,10 +234,16 @@ class Robot1Master(Node):
             self._mb_write(REG_CONV_CMD, CONV_IDLE)
             return False
 
-        self._send_cart(**CONV_ABOVE)
-        self._send_cart(**CONV_DROP)
+        self._send_cart(**CONV_REAR_ABV)
+        self._send_cart(**CONV_REAR_DRP)
         self._send_gripper('open')
-        self._send_cart(**CONV_ABOVE)
+        self._send_cart(**CONV_REAR_ABV)
+
+        # Run rear belt to deliver die to Bunsen, then signal die is on belt
+        self._run_conveyor('forward')
+        self.get_logger().info(f'Rear belt running for {REAR_CONVEYOR_TRAVEL_SECS}s...')
+        time.sleep(REAR_CONVEYOR_TRAVEL_SECS)
+        self._run_conveyor('stop')
 
         # Hand camera token to Bunsen so it can read pip count
         self._mb_write(REG_CONV_CMD, CONV_DIE_ON_REAR)
@@ -248,22 +268,24 @@ class Robot1Master(Node):
             self.get_logger().error('Timeout waiting for BUNSEN_WANTS_SEND')
             return False
 
-        self._run_conveyor('forward')
+        # Signal Bunsen to start the front belt — Bunsen controls that conveyor
         self._mb_write(REG_CONV_CMD, CONV_FRONT_RUNNING)
 
         if not self._wait_conv(CONV_DIE_ON_FRONT):
             self.get_logger().error('Timeout waiting for die on front conveyor')
-            self._run_conveyor('stop')
             return False
 
+        # Wait for die to travel to pickup point (Bunsen runs the belt)
         time.sleep(CONVEYOR_TRAVEL_SECS)
-        self._run_conveyor('stop')
+
+        # Take camera token back before picking (Beaker needs camera for next round)
+        self._mb_write_coil(COIL_CAMERA_CLIENT, False)
 
         self._send_gripper('open')
-        self._send_cart(**FRONT_CONV_ABOVE)
-        self._send_cart(**FRONT_CONV_PICKUP)
+        self._send_cart(**CONV_FRNT_ABV)
+        self._send_cart(**CONV_FRNT_DWN)
         self._send_gripper('close')
-        self._send_cart(**FRONT_CONV_ABOVE)
+        self._send_cart(**CONV_FRNT_ABV)
 
         self._mb_write(REG_CONV_CMD, CONV_BEAKER_HAS_DIE)
         self._wait_conv(CONV_IDLE, timeout=10.0)
@@ -276,7 +298,12 @@ class Robot1Master(Node):
         self._cart.wait_for_server()
         self._joint.wait_for_server()
         self._gripper.wait_for_server()
-        self._cam.wait_for_service()
+        self._conv.wait_for_server()
+        self._camera_ok = self._cam.wait_for_service(timeout_sec=5.0)
+        if self._camera_ok:
+            self.get_logger().info('Camera service found.')
+        else:
+            self.get_logger().warn('Camera service not found — running without camera (pip counts skipped)')
         self.get_logger().info('Ready.')
 
         self.go_home()
