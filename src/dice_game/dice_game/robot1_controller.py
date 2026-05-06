@@ -84,6 +84,25 @@ CONV_FRONT_RUNNING     = 6   # Beaker: front belt running, Bunsen may place die
 CONV_DIE_ON_FRONT      = 7   # Bunsen: die placed on front belt
 CONV_BEAKER_HAS_DIE    = 8   # Beaker: die picked up
 
+# ── Standard western die chirality ────────────────────────────────────────────
+# (top_pip, front_pip) → right_pip   (all 24 valid orientations)
+# Opposite faces always sum to 7: 1-6, 2-5, 3-4.
+# Right-handed rule: when 1 is up and 2 faces you, 3 is to your right.
+_DIE_RIGHT = {
+    (1, 2): 3, (1, 3): 5, (1, 5): 4, (1, 4): 2,
+    (2, 6): 3, (2, 3): 1, (2, 1): 4, (2, 4): 6,
+    (3, 2): 6, (3, 6): 5, (3, 5): 1, (3, 1): 2,
+    (4, 2): 1, (4, 1): 5, (4, 5): 6, (4, 6): 2,
+    (5, 1): 3, (5, 3): 6, (5, 6): 4, (5, 4): 1,
+    (6, 5): 3, (6, 3): 2, (6, 2): 4, (6, 4): 5,
+}
+
+# Best rotation step index (into CAMERA_ROTATION_STEPS) for each die face.
+# Assumes increasing wrist roll brings the RIGHT face toward the camera.
+# If the robot moves to the opposite face, swap 'right' and 'left' indices (2↔5).
+# top/bottom are not reachable by wrist roll alone — re-pick needed if target is there.
+_FACE_STEP = {'front': 0, 'right': 2, 'back': 3, 'left': 5}
+
 
 class State(IntEnum):
     SETUP      = 1
@@ -287,20 +306,58 @@ class Robot1Controller(Node):
         Manual camera fallback — called when camera service is unavailable.
 
         Robot is already at CAMERA_POSE (called from _find_pip_rotating).
-        Steps through the 6 wrist rotation positions in sequence.
-        At each position the robot pauses and you type the pip count you see.
-        Returns the target pip count when found, or 0 if not seen at any position.
-        Robot stays at the matching rotation (same behaviour as camera mode).
+
+        1. Prompts for the front face (camera-facing) and top face (2 numbers).
+        2. Uses the standard die chirality table to compute all 6 faces.
+        3. Jumps directly to the rotation step most likely to show the target pip.
+        4. Prompts for confirmation at that step; if wrong, sweeps remaining steps.
+
+        Falls back to a full step-by-step scan if the (top, front) combination is
+        not a valid standard-die orientation.
+
+        Returns the target pip count when found, or 0 if not found on any face.
         """
-        print(f'\n{"=" * 54}')
+        print(f'\n{"=" * 56}')
         print(f'  MANUAL MODE  —  looking for pip {target}')
-        print(f'  Robot is at camera position. Watch the die.')
-        print(f'  Type the pip count you see at each position.')
-        print(f'{"=" * 54}')
+        print(f'  Die is at camera position.')
+        print(f'{"=" * 56}')
 
-        for i, r_offset in enumerate(CAMERA_ROTATION_STEPS):
+        front_pip = self._prompt_face('Front face (what you see facing the camera)')
+        top_pip   = self._prompt_face('Top face   (what is pointing up)           ')
+
+        right_pip = _DIE_RIGHT.get((top_pip, front_pip))
+        if right_pip is None:
+            print(f'\n  ! ({top_pip}, {front_pip}) is not a valid standard-die orientation.')
+            print(f'  Falling back to step-by-step scan...')
+            return self._scan_all_steps(target)
+
+        back_pip   = 7 - front_pip
+        left_pip   = 7 - right_pip
+        bottom_pip = 7 - top_pip
+
+        print(f'\n  Die layout:')
+        print(f'    front={front_pip}  right={right_pip}  back={back_pip}'
+              f'  left={left_pip}  top={top_pip}  bottom={bottom_pip}')
+
+        face_map = {
+            'front': front_pip, 'right': right_pip,
+            'back':  back_pip,  'left':  left_pip,
+            'top':   top_pip,   'bottom': bottom_pip,
+        }
+        target_face = next((f for f, v in face_map.items() if v == target), None)
+        print(f'  Pip {target} is on the {target_face} face.')
+
+        if target_face in ('top', 'bottom'):
+            print(f'  Cannot reach the {target_face} face by wrist rotation — re-pick needed.')
+            return 0
+
+        # Best-guess step first, then sweep any remaining steps
+        best = _FACE_STEP[target_face]
+        step_order = [best] + [i for i in range(len(CAMERA_ROTATION_STEPS)) if i != best]
+
+        for i in step_order:
+            r_offset = CAMERA_ROTATION_STEPS[i]
             self._set_state(State.PIP_COUNT if i == 0 else State.ROTATE_PIP)
-
             if r_offset != 0:
                 self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
 
@@ -309,15 +366,45 @@ class Robot1Controller(Node):
             self._pub_pip.publish(Int32(data=pips))
 
             if pips == target:
-                print(f'  >> Pip {target} confirmed — continuing.\n')
+                print(f'  >> Pip {target} found — continuing.\n')
                 return pips
 
-        print(f'  Pip {target} not found at any of the 6 positions.\n')
+        print(f'  Pip {target} not found at any position.\n')
+        return 0
+
+    def _scan_all_steps(self, target: int) -> int:
+        """Fallback: step through all 6 rotation positions in order, prompting at each."""
+        for i, r_offset in enumerate(CAMERA_ROTATION_STEPS):
+            self._set_state(State.PIP_COUNT if i == 0 else State.ROTATE_PIP)
+            if r_offset != 0:
+                self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
+
+            pips = self._prompt_pip(i, r_offset)
+            self.get_logger().info(f'  Position {i + 1}/6  r={r_offset:+.0f}°: {pips} pip(s)')
+            self._pub_pip.publish(Int32(data=pips))
+
+            if pips == target:
+                print(f'  >> Pip {target} found — continuing.\n')
+                return pips
+
+        print(f'  Pip {target} not found at any position.\n')
         return 0
 
     @staticmethod
+    def _prompt_face(label: str) -> int:
+        """Prompt user for a die face pip count (1-6)."""
+        while True:
+            try:
+                val = int(input(f'  {label} [1-6]: ').strip())
+                if 1 <= val <= 6:
+                    return val
+            except (ValueError, EOFError):
+                pass
+            print('    Please enter a number from 1 to 6.')
+
+    @staticmethod
     def _prompt_pip(step: int, r_offset: float) -> int:
-        """Print position info and block until user enters a valid pip count (1-6)."""
+        """Prompt user for the pip count visible at the current rotation position."""
         while True:
             try:
                 raw = input(
