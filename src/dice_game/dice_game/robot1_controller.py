@@ -42,6 +42,11 @@ from dice_game.pip_counter import count_pips, save_debug_image
 HOME_JOINTS   = (1.1, 1.5, -2.0, -1.7, -88.6, -30.0)
 PICK_ABOVE    = dict(x=470.0, y=-15.0,  z=-18.0,  w=179.9, p=0.0,   r=30.0)
 PICK_DOWN     = dict(x=470.0, y=-15.0,  z=-185.0, w=179.9, p=0.0,   r=30.0)
+# Re-orient drop: same position as pick but wrist rotated 90° (r=120° vs r=30°).
+# Die is set down in a new orientation, then picked back up at r=30° so the next
+# camera view sees a fresh face.  Follows DROP_POSE from Controlling_robots_using_claude.py.
+REORIENT_ABV  = dict(x=470.0, y=-15.0,  z=-18.0,  w=179.9, p=0.0,   r=120.0)  # CALIBRATE
+REORIENT_DWN  = dict(x=470.0, y=-15.0,  z=-185.0, w=179.9, p=0.0,   r=120.0)  # CALIBRATE
 CAMERA_POSE   = dict(x=490.0, y=890.0,  z=881.0,  w=73.0,  p=-66.0, r=-170.0)
 CONV_REAR_ABV = dict(x=-194.112, y=617.369,  z=200.840,  w=179.9, p=0.0,   r=120.0)
 CONV_REAR_DRP = dict(x=-194.112, y=617.369,  z=8.840,  w=179.9, p=0.0,   r=120.0)
@@ -431,11 +436,24 @@ class Robot1Controller(Node):
         self._send_gripper('close')
         self._send_cart(**PICK_ABOVE)
 
-    def put_dice_down(self):
-        """Return die to pickup spot and release — lets die re-orient on re-pick."""
+    def reorient_and_repick(self):
+        """
+        Drop die at REORIENT_DWN (wrist 90° offset from pick) then pick it back
+        up at PICK_DOWN (standard orientation).  The 90° offset means the gripper
+        releases a different die axis each time, so the next camera view sees a
+        fresh face.  Matches the DROP_POSE pattern in Controlling_robots_using_claude.py.
+        Calibrate REORIENT_ABV / REORIENT_DWN for the physical drop position.
+        """
+        self.get_logger().info('Re-orienting die — dropping at 90° wrist offset...')
+        self._send_cart(**REORIENT_ABV)
+        self._send_cart(**REORIENT_DWN)
+        self._send_gripper('open')
+        self._send_cart(**REORIENT_ABV)
+
+        self.get_logger().info('Re-picking die in standard orientation...')
         self._send_cart(**PICK_ABOVE)
         self._send_cart(**PICK_DOWN)
-        self._send_gripper('open')
+        self._send_gripper('close')
         self._send_cart(**PICK_ABOVE)
 
     # ── Conveyor handshake ────────────────────────────────────────────────────
@@ -552,10 +570,10 @@ class Robot1Controller(Node):
             # ── Phase 1: find pip = 1 ────────────────────────────────────────
             self.get_logger().info('\n=== PHASE 1: Searching for pip = 1 ===')
             self._set_pip_progress(0)
-            while True:
-                self._set_state(State.GRAB_DIE)
-                self.pick_dice()
+            self._set_state(State.GRAB_DIE)
+            self.pick_dice()
 
+            while True:
                 pips = self._find_pip_rotating(1, 'search')
                 self._pub_pip.publish(Int32(data=pips))
 
@@ -563,16 +581,16 @@ class Robot1Controller(Node):
                     self.get_logger().info('pip = 1 found — START STATE reached!')
                     break
 
-                self.get_logger().info('pip = 1 not on any face — re-picking...')
+                self.get_logger().info('pip = 1 not on any face — re-orienting die...')
                 self._set_state(State.RECOVER)
-                self.put_dice_down()
+                self.reorient_and_repick()
                 self.r1_retries += 1
 
             # ── Phase 2: sequential 1 → 6 ────────────────────────────────────
             self.get_logger().info('\n=== PHASE 2: Sequential 1 → 6 ===')
 
-            # Already holding pip=1 from Phase 1 — skip the first pick
-            skip_pick = True
+            # Already holding pip=1 from Phase 1
+            holding_die = True
 
             for target in range(1, 7):
                 round_retries = 0
@@ -580,11 +598,11 @@ class Robot1Controller(Node):
                 self._set_pip_progress(target)
 
                 while True:
-                    if not skip_pick:
+                    if not holding_die:
                         self._set_state(State.GRAB_DIE)
                         self.pick_dice()
+                    holding_die = False
 
-                    skip_pick = False
                     pips = self._find_pip_rotating(target, f'seq_t{target}_r{round_retries}')
                     self._pub_pip.publish(Int32(data=pips))
 
@@ -592,9 +610,10 @@ class Robot1Controller(Node):
                         self.get_logger().info(f'Correct pip ({pips}) — sending to Bunsen')
                         break
 
-                    self.get_logger().info(f'pip={target} not on any face — re-picking...')
+                    self.get_logger().info(f'pip={target} not on any face — re-orienting die...')
                     self._set_state(State.RECOVER)
-                    self.put_dice_down()
+                    self.reorient_and_repick()
+                    holding_die = True
                     round_retries += 1
                     self.r1_retries += 1
 
@@ -615,6 +634,7 @@ class Robot1Controller(Node):
                     self._set_state(State.FAULT)
                     break
 
+                holding_die = True
                 self.get_logger().info('Die received — moving to next target')
 
             # ── Results ───────────────────────────────────────────────────────
