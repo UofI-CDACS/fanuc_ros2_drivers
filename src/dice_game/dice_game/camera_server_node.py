@@ -30,20 +30,8 @@ from camera import Camera  # noqa: E402
 
 from fanuc_interfaces.srv import CaptureImage
 
-
-def _discover_camera_ip() -> str | None:
-    """Return the IP of the first GigE camera found, or None."""
-    try:
-        dev_list = mvsdk.CameraEnumerateDevice()
-        for dev in dev_list:
-            try:
-                cam_ip, _, _, _, _, _ = mvsdk.CameraGigeGetIp(dev)
-                return cam_ip
-            except Exception:
-                pass
-    except Exception:
-        pass
-    return None
+# Known camera IP — checked first before falling back to auto-discovery
+CAMERA_IP = '10.8.4.210'
 
 
 class CameraServerNode(Node):
@@ -52,15 +40,20 @@ class CameraServerNode(Node):
         super().__init__('dice_camera_server')
         self._lock = threading.Lock()
 
-        # ── Auto-discover camera ──────────────────────────────────────────────
-        ip = _discover_camera_ip()
-        if ip:
-            self.get_logger().info(f'Found GigE camera at {ip} — connecting...')
-        else:
-            self.get_logger().info('No GigE IP found — letting mvsdk auto-select camera')
+        # ── Connect to camera ─────────────────────────────────────────────────
+        self.get_logger().info(f'Looking for camera at {CAMERA_IP}...')
+        self._camera = Camera(camera_ip=CAMERA_IP)
 
-        self._camera = Camera(camera_ip=ip)
-        self.get_logger().info('Camera ready.')
+        if self._camera.hCamera is None:
+            self.get_logger().warn(
+                f'Camera not found at {CAMERA_IP} — falling back to auto-discovery'
+            )
+            self._camera = Camera(camera_ip=None)
+
+        if self._camera.hCamera is not None:
+            self.get_logger().info('Camera ready.')
+        else:
+            self.get_logger().error('No camera found — capture requests will fail.')
 
         # ── Service server ────────────────────────────────────────────────────
         self._srv = self.create_service(
