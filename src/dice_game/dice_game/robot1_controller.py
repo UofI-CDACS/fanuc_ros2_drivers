@@ -53,8 +53,7 @@ CAMERA_POSE   = dict(x=490.0, y=890.0,  z=881.0,  w=73.0,  p=-66.0, r=-170.0)
 # This lets the code read both front and top with the camera (or two manual prompts)
 # and then use the chirality table to locate any target pip.
 # Fill in your calibrated joint angles and remove the "None" assignment.
-CAMERA_JOINT_2 = None   # CALIBRATE: replace with (j1, j2, j3, j4, j5, j6) degrees
-#                          e.g. (1.1, 1.5, -2.0, -1.7, 1.4, -30.0)
+CAMERA_JOINT_2 = (50.731, 31.588, -14.992, 173.365, -103.358, -125.27)
 CONV_REAR_ABV = dict(x=-194.112, y=617.369,  z=200.840,  w=179.9, p=0.0,   r=120.0)
 CONV_REAR_DRP = dict(x=-194.112, y=617.369,  z=8.840,  w=179.9, p=0.0,   r=120.0)
 # Front conveyor — Bunsen sends die back here; needs physical calibration
@@ -70,7 +69,7 @@ CONVEYOR_TRAVEL_SECS = 5.0    # time for front belt (Bunsen-side, receiving die 
 POLL_INTERVAL        = 0.2
 
 # ── Edit this to tune how long the rear belt runs to deliver die to Bunsen ───
-REAR_CONVEYOR_TRAVEL_SECS = 5.0
+REAR_CONVEYOR_TRAVEL_SECS = 9.9
 
 # ── Modbus — mirrors modbus_server.py running on Bunsen ──────────────────────
 MODBUS_PORT = 5020
