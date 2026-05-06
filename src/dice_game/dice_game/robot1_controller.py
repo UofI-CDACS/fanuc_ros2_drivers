@@ -48,6 +48,13 @@ PICK_DOWN     = dict(x=470.0, y=-15.0,  z=-185.0, w=179.9, p=0.0,   r=30.0)
 REORIENT_ABV  = dict(x=470.0, y=-15.0,  z=-18.0,  w=179.9, p=0.0,   r=120.0)  # CALIBRATE
 REORIENT_DWN  = dict(x=470.0, y=-15.0,  z=-185.0, w=179.9, p=0.0,   r=120.0)  # CALIBRATE
 CAMERA_POSE   = dict(x=490.0, y=890.0,  z=881.0,  w=73.0,  p=-66.0, r=-170.0)
+# Second camera view — joint pose that rotates J5 ~90° so the die face that was
+# resting on the table (the "bottom" at pick) points toward the camera.
+# This lets the code read both front and top with the camera (or two manual prompts)
+# and then use the chirality table to locate any target pip.
+# Fill in your calibrated joint angles and remove the "None" assignment.
+CAMERA_JOINT_2 = None   # CALIBRATE: replace with (j1, j2, j3, j4, j5, j6) degrees
+#                          e.g. (1.1, 1.5, -2.0, -1.7, 1.4, -30.0)
 CONV_REAR_ABV = dict(x=-194.112, y=617.369,  z=200.840,  w=179.9, p=0.0,   r=120.0)
 CONV_REAR_DRP = dict(x=-194.112, y=617.369,  z=8.840,  w=179.9, p=0.0,   r=120.0)
 # Front conveyor — Bunsen sends die back here; needs physical calibration
@@ -324,11 +331,24 @@ class Robot1Controller(Node):
         """
         print(f'\n{"=" * 56}')
         print(f'  MANUAL MODE  —  looking for pip {target}')
-        print(f'  Die is at camera position.')
         print(f'{"=" * 56}')
 
+        # ── View 1: front face at CAMERA_POSE ────────────────────────────────
+        print('\n  VIEW 1  —  die at camera position.')
         front_pip = self._prompt_face('Front face (what you see facing the camera)')
-        top_pip   = self._prompt_face('Top face   (what is pointing up)           ')
+
+        # ── View 2: top face at CAMERA_JOINT_2 ───────────────────────────────
+        if CAMERA_JOINT_2 is not None:
+            print('\n  Moving to second view (J5 rotated ~90°)...')
+            self._send_joint(*CAMERA_JOINT_2)
+            print('  VIEW 2  —  bottom-of-table face now points at camera.')
+            top_pip = self._prompt_face('Top face  (what you see now)              ')
+            # Return to camera base before the rotation sweep
+            self._send_cart(**CAMERA_POSE)
+        else:
+            # CAMERA_JOINT_2 not calibrated yet — ask user to read top face in place
+            print('\n  VIEW 2  —  (CAMERA_JOINT_2 not set; look at the top of the die)')
+            top_pip = self._prompt_face('Top face  (what is pointing up)           ')
 
         right_pip = _DIE_RIGHT.get((top_pip, front_pip))
         if right_pip is None:
