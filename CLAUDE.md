@@ -297,3 +297,58 @@ ros2 launch launch/start.launch.py robot_name:=Beaker robot_ip:=10.8.4.16
 # Terminal 3 — Beaker game controller + camera
 ros2 launch dice_game robot1.launch.py robot_name:=Beaker robot_ip:=10.8.4.16 modbus_ip:=<bunsen_ip>
 ```
+
+---
+
+## Session Log — 2026-05-05
+
+### What Was Built
+
+Fixed `receive_from_bunsen()` conveyor bug and added a standalone conveyor timing test script.
+
+### Files Changed / Created
+
+| File | What changed |
+|---|---|
+| `src/dice_game/dice_game/robot1_controller.py` | Removed incorrect `_run_conveyor` calls from `receive_from_bunsen()` |
+| `test_conveyor.py` | New standalone conveyor timing test script |
+
+---
+
+### robot1_controller.py — receive_from_bunsen() Fix
+
+`receive_from_bunsen()` was calling `_run_conveyor('forward')` and `_run_conveyor('stop')`, which incorrectly sent commands to the rear conveyor (R21/R22 on Beaker's controller) during a receive operation.
+
+**Rule:** Beaker controls only the rear conveyor. Bunsen controls the front conveyor.
+
+The fix removes all `_run_conveyor` calls from `receive_from_bunsen()`. Beaker now only writes `CONV_FRONT_RUNNING` to the Modbus register as a signal to Bunsen ("go ahead, start your belt"), then waits `CONVEYOR_TRAVEL_SECS` for the die to arrive before picking it up.
+
+The rear conveyor (`_run_conveyor`) is only called inside `send_to_bunsen()`.
+
+---
+
+### test_conveyor.py
+
+Standalone script at project root for tuning `REAR_CONVEYOR_TRAVEL_SECS`.
+
+```bash
+# Default (5 seconds)
+python3 test_conveyor.py
+
+# Custom duration
+python3 test_conveyor.py 8.0
+
+# Custom duration + robot name
+python3 test_conveyor.py 8.0 Beaker
+```
+
+Requires the FANUC driver running in another terminal:
+```bash
+ros2 launch launch/start.launch.py robot_name:=Beaker robot_ip:=10.8.4.16
+```
+
+**Rear conveyor registers** (in `src/action_servers/dependencies/robot_controller.py`):
+- R21 = forward
+- R22 = reverse
+
+Verify these match the rear conveyor wiring on Beaker's teach pendant before running.

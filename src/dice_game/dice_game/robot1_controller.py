@@ -351,9 +351,9 @@ class Robot1Controller(Node):
 
     def receive_from_bunsen(self) -> bool:
         """
-        Receive die back from Bunsen via front conveyor.
-        Handshake: wait BUNSEN_WANTS_SEND → start front belt → FRONT_RUNNING
-                   → wait DIE_ON_FRONT → travel → stop → pick
+        Receive die back from Bunsen via front conveyor (Bunsen-controlled).
+        Handshake: wait BUNSEN_WANTS_SEND → FRONT_RUNNING (signal Bunsen to start belt)
+                   → wait DIE_ON_FRONT → travel delay → pick
                    → BEAKER_HAS_DIE → wait IDLE
         """
         self.get_logger().info('Waiting for Bunsen to send die back...')
@@ -362,18 +362,15 @@ class Robot1Controller(Node):
             self.get_logger().error('Timeout: Bunsen did not signal WANTS_SEND')
             return False
 
-        # Start front belt so Bunsen can place the die
-        self._run_conveyor('forward')
+        # Signal Bunsen it may start the front belt and place the die
         self._mb_write(REG_CONV_CMD, CONV_FRONT_RUNNING)
 
         if not self._wait_conv(CONV_DIE_ON_FRONT):
             self.get_logger().error('Timeout: Bunsen did not place die on front conveyor')
-            self._run_conveyor('stop')
             return False
 
-        # Let die travel to pickup point then stop belt
+        # Wait for die to travel to pickup point (Bunsen controls the front belt)
         time.sleep(CONVEYOR_TRAVEL_SECS)
-        self._run_conveyor('stop')
 
         # Take camera token back before picking (Beaker needs camera for next round)
         self._mb_write_coil(COIL_CAMERA_CLIENT, False)
