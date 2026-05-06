@@ -4,6 +4,8 @@ import rclpy
 import ros_robot
 from ros_robot import FanucRosNode
 
+MAX_FACE = 6
+
 # Constants
 rest_joint = [18.446,-7.714,-12.393,.285,-76.969,99.095]
 camera_cart_center = [542.683, 558.282, -120.016, 179.417, .375, 117.602]
@@ -40,7 +42,7 @@ async def main():
     await robot.move_cartesian(scoot(camera_cart,100))
 
     #Loop through all odd faces on die
-    for i in range(1,6,2):
+    for i in range(1,MAX_FACE,2):
         #Find dice
         await identify_find_dice_routine(pip=i)
         
@@ -59,11 +61,12 @@ async def main():
         #publish dice ready
         robot.set_dice_ready(True)
 
-        #Wait for other robot's signal that it's ready
-        while not await robot.request_dice_ready():
-            await asyncio.sleep(5)
+        if i != (MAX_FACE-1):
+            #Wait for other robot's signal that it's ready
+            while not await robot.request_dice_ready():
+                await asyncio.sleep(5)
 
-        await grab_cube_conveyor()
+            await grab_cube_conveyor()
     
     #End with everything back in starting position
     await robot.move_joints(rest_joint)

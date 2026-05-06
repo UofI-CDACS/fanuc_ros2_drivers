@@ -4,6 +4,8 @@ import rclpy
 import ros_robot
 from ros_robot import FanucRosNode
 
+MAX_FACE = 6
+
 # Constants
 rest_joint = [18.446,-7.714,-12.393,.285,-76.969,70.420]
 
@@ -35,7 +37,7 @@ async def main():
     await robot.move_joints(rest_joint)
 
     #Loop through all even faces on die
-    for i in range(2,7,2):
+    for i in range(2,MAX_FACE+1,2):
         #Wait for other robot's signal that it's ready
         while not await robot.request_dice_ready():
             await asyncio.sleep(5)
@@ -50,22 +52,19 @@ async def main():
         await robot.move_cartesian(camera_cart)
         await robot.open_gripper_onrobot(False)
         await robot.move_cartesian(scoot(camera_cart,200))
-        #put dice on front conveyor
-        await robot.move_cartesian(scoot(conveyor_front_cart,100))
-        await robot.move_cartesian(conveyor_front_cart)
-        await robot.open_gripper_onrobot(True)
-        await robot.move_cartesian(scoot(conveyor_front_cart,100))
-        if i != 6: #don't need to send on conveyor on last loop
+       
+        if i != MAX_FACE: #don't need to send on conveyor on last loop
+            #put dice on front conveyor
+            await robot.move_cartesian(scoot(conveyor_front_cart,100))
+            await robot.move_cartesian(conveyor_front_cart)
+            await robot.open_gripper_onrobot(True)
+            await robot.move_cartesian(scoot(conveyor_front_cart,100))
             await wait_for_conveyor_sensor("left")
 
             #publish dice ready
             robot.set_dice_ready(True)
 
     #End with cube set down and everything back in starting position
-    #grab dice from camera spot
-    await robot.move_cartesian(camera_cart)
-    await robot.open_gripper_onrobot(False)
-    await robot.move_cartesian(scoot(camera_cart,200))
     #go to rest and set down cube
     await robot.move_joints(rest_joint)
     await robot.move_cartesian(cube_grab_cart)
