@@ -127,6 +127,7 @@ class Robot1Controller(Node):
         # ── Counters ──────────────────────────────────────────────────────────
         self.r1_retries   = 0
         self._total_counts = []   # (target, actual_pip, round_retries)
+        self._camera_ok   = False
 
     # ── Modbus helpers ────────────────────────────────────────────────────────
 
@@ -230,8 +231,10 @@ class Robot1Controller(Node):
 
     def _capture_count_at(self, label: str) -> int:
         """Capture image at current position and count pips (no movement)."""
+        if not self._camera_ok:
+            time.sleep(0.4)
+            return -1
         time.sleep(0.4)
-        self._cam_cli.wait_for_service()
         req = CaptureImage.Request()
         future = self._cam_cli.call_async(req)
         rclpy.spin_until_future_complete(self, future)
@@ -258,6 +261,15 @@ class Robot1Controller(Node):
         """
         self.get_logger().info(f'Scanning for pip={target} by rotating wrist...')
         self._send_cart(**CAMERA_POSE)
+
+        if not self._camera_ok:
+            self.get_logger().warn('No camera — rotating through all positions then continuing')
+            for i, r_offset in enumerate(CAMERA_ROTATION_STEPS):
+                self._set_state(State.PIP_COUNT if i == 0 else State.ROTATE_PIP)
+                if r_offset != 0:
+                    self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
+                time.sleep(0.4)
+            return target   # assume correct so game keeps moving
 
         for i, r_offset in enumerate(CAMERA_ROTATION_STEPS):
             self._set_state(State.PIP_COUNT if i == 0 else State.ROTATE_PIP)
@@ -390,7 +402,12 @@ class Robot1Controller(Node):
         self._joint.wait_for_server()
         self._gripper.wait_for_server()
         self._conv.wait_for_server()
-        self._cam_cli.wait_for_service()
+
+        self._camera_ok = self._cam_cli.wait_for_service(timeout_sec=5.0)
+        if self._camera_ok:
+            self.get_logger().info('Camera service found.')
+        else:
+            self.get_logger().warn('Camera service not found — running without camera, pip counts will be skipped')
 
         modbus_ip = self.get_parameter('modbus_ip').value
         self._modbus_connect(modbus_ip)
