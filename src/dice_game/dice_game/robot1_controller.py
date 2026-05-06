@@ -258,18 +258,15 @@ class Robot1Controller(Node):
         Move to camera pose and rotate wrist in 60° steps (6 positions = full turn)
         looking for target pip count. Returns pip count when found, or 0 if the target
         face is not seen in any orientation. Robot stays at the matching rotation.
+
+        When camera is unavailable, falls back to _find_pip_manual() which prompts
+        the user to type the pip count they see at each rotation position.
         """
         self.get_logger().info(f'Scanning for pip={target} by rotating wrist...')
         self._send_cart(**CAMERA_POSE)
 
         if not self._camera_ok:
-            self.get_logger().warn('No camera — rotating through all positions then continuing')
-            for i, r_offset in enumerate(CAMERA_ROTATION_STEPS):
-                self._set_state(State.PIP_COUNT if i == 0 else State.ROTATE_PIP)
-                if r_offset != 0:
-                    self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
-                time.sleep(0.4)
-            return target   # assume correct so game keeps moving
+            return self._find_pip_manual(target)
 
         for i, r_offset in enumerate(CAMERA_ROTATION_STEPS):
             self._set_state(State.PIP_COUNT if i == 0 else State.ROTATE_PIP)
@@ -284,6 +281,55 @@ class Robot1Controller(Node):
                 return pips
 
         return 0
+
+    def _find_pip_manual(self, target: int) -> int:
+        """
+        Manual camera fallback — called when camera service is unavailable.
+
+        Robot is already at CAMERA_POSE (called from _find_pip_rotating).
+        Steps through the 6 wrist rotation positions in sequence.
+        At each position the robot pauses and you type the pip count you see.
+        Returns the target pip count when found, or 0 if not seen at any position.
+        Robot stays at the matching rotation (same behaviour as camera mode).
+        """
+        print(f'\n{"=" * 54}')
+        print(f'  MANUAL MODE  —  looking for pip {target}')
+        print(f'  Robot is at camera position. Watch the die.')
+        print(f'  Type the pip count you see at each position.')
+        print(f'{"=" * 54}')
+
+        for i, r_offset in enumerate(CAMERA_ROTATION_STEPS):
+            self._set_state(State.PIP_COUNT if i == 0 else State.ROTATE_PIP)
+
+            if r_offset != 0:
+                self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
+
+            pips = self._prompt_pip(i, r_offset)
+            self.get_logger().info(f'  Position {i + 1}/6  r={r_offset:+.0f}°: {pips} pip(s)')
+            self._pub_pip.publish(Int32(data=pips))
+
+            if pips == target:
+                print(f'  >> Pip {target} confirmed — continuing.\n')
+                return pips
+
+        print(f'  Pip {target} not found at any of the 6 positions.\n')
+        return 0
+
+    @staticmethod
+    def _prompt_pip(step: int, r_offset: float) -> int:
+        """Print position info and block until user enters a valid pip count (1-6)."""
+        while True:
+            try:
+                raw = input(
+                    f'\n  Position {step + 1}/6  (wrist {r_offset:+.0f}°)'
+                    f'  —  pip count you see [1-6]: '
+                ).strip()
+                val = int(raw)
+                if 1 <= val <= 6:
+                    return val
+            except (ValueError, EOFError):
+                pass
+            print('    Please enter a whole number from 1 to 6.')
 
     # ── Robot moves ───────────────────────────────────────────────────────────
 
