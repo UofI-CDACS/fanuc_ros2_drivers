@@ -53,11 +53,11 @@ CONVEYOR_WAIT_POSE = dict(x=-72.719, y=-404.0, z=352.581, w=-175.773, p=0.668, r
 REAR_CONV_ABOVE  = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)     # CALIBRATE
 REAR_CONV_PICKUP = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)     # CALIBRATE
 
-FRONT_CONV_ABOVE  = dict(x=126.961, y=-582.177, z=152.102, w=-175.773, p=0.668, r=-89.634)
-FRONT_CONV_PLACE  = dict(x=126.961, y=-582.177, z=52.102, w=-175.773, p=0.668, r=-89.634)
+FRONT_CONV_ABOVE  = dict(joint1=-62.667, joint2=13.088, joint3=-25.034, joint4=-1.655, joint5=-65.618, joint6=-26.181)
+FRONT_CONV_PLACE  = dict(joint1=-64.747, joint2=15.950, joint3=-33.644, joint4=-1.767, joint5=-57.065, joint6=-23.823)
 FRONT_CONV_PICKUP = FRONT_CONV_PLACE  # alias
 
-CAM_POSE_1 = dict(joint1=-70.999, joint2=51.903, joint3=8.141, joint4=174.404, joint5=-79.550, joint6=23.121)     
+CAM_POSE_1 = dict(joint1=-49.388, joint2=36.993, joint3=24.010, joint4=67.703, joint5=-51.149, joint6=119.961)
 CAM_POSE_2 = dict(joint1=-70.999, joint2=51.903, joint3=8.141, joint4=174.404, joint5=-79.550, joint6=23.121)
 
 ROT_TILT_AWAY   = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)     # front→top  CALIBRATE
@@ -67,8 +67,8 @@ ROT_ROLL_RIGHT  = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)     # left→to
 ROT_FLIP_1      = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)     # flip step1 CALIBRATE
 ROT_FLIP_2      = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)     # flip step2 CALIBRATE
 
-FINAL_PLACE_ABOVE = dict(x=450.577, y=3.423, z=0.0, w=-175.671, p=0.681, r=-89.632)
-FINAL_PLACE_DOWN  = dict(x=450.577, y=3.423, z=-141.722, w=-175.671, p=0.681, r=-89.632)
+FINAL_PLACE_ABOVE = dict(joint1=18.885, joint2=-3.830, joint3=-27.348, joint4=0.106, joint5=-62.685, joint6=-18.934)
+FINAL_PLACE_DOWN  = dict(joint1=18.885, joint2=16.454, joint3=-64.706, joint4=0.221, joint5=-25.327, joint6=-19.085)
 
 # ---------------------------------------------------------------------------
 # Die orientation math

@@ -4,15 +4,17 @@ Modbus TCP server — runs on Bunsen (10.8.4.6).
 
 Register map
   Holding Registers (FC3/FC6):
-    0  STATE         : Bunsen state machine (see STATE_* constants)
-    1  PIP_PROGRESS  : pip currently being targeted (0=not started, 1-6)
+    0  BUNSEN_STATE  : Bunsen state machine (see STATE_* constants)
+    1  PIP_PROGRESS  : pip currently being targeted (1–6; whoever just finished sets it to next)
     2  CONV_CMD      : conveyor coordination state machine (see CONV_* constants)
     3  RETRIES       : Bunsen reposition/retry count (cumulative)
+    4  BEAKER_STATE  : Beaker state machine (written by Beaker)
 
   Coils (FC1/FC5):
-    0  READY         : 1 = Bunsen idle and ready for next command
-    1  CAMERA_CLIENT : 1 = Bunsen holds camera token (may call camera service)
+    0  BUNSEN_READY  : 1 = Bunsen has placed die on front conveyor, Beaker may grab
+    1  CAMERA_CLIENT : 1 = Bunsen holds camera token
                        0 = Beaker holds camera token
+    2  BEAKER_READY  : 1 = Beaker has placed die on rear conveyor, Bunsen may grab
 """
 import os
 from pymodbus.server import StartTcpServer
@@ -25,16 +27,20 @@ from pymodbus.datastore import (
 # ---------------------------------------------------------------------------
 # Register addresses
 # ---------------------------------------------------------------------------
-REG_STATE        = 0
+REG_STATE        = 0   # Bunsen's state (alias: REG_BUNSEN_STATE)
+REG_BUNSEN_STATE = 0
 REG_PIP_PROGRESS = 1
 REG_CONV_CMD     = 2
 REG_RETRIES      = 3
+REG_BEAKER_STATE = 4   # Beaker's state (written by Beaker)
 
 # ---------------------------------------------------------------------------
 # Coil addresses
 # ---------------------------------------------------------------------------
-COIL_READY         = 0
+COIL_READY         = 0   # Bunsen ready (alias: COIL_BUNSEN_READY)
+COIL_BUNSEN_READY  = 0
 COIL_CAMERA_CLIENT = 1
+COIL_BEAKER_READY  = 2   # Beaker ready (written by Beaker)
 
 # ---------------------------------------------------------------------------
 # State machine states (1-9)
@@ -98,13 +104,15 @@ def main():
     context = ModbusServerContext(slaves=store, single=True)
 
     print(f'Modbus TCP server on {host}:{port}')
-    print('  HR 0  STATE         1=Setup 2=Wait 3=GrabDie 4=PipCount'
+    print('  HR 0  BUNSEN_STATE  1=Setup 2=Wait 3=GrabDie 4=PipCount'
           ' 5=PositionPip 6=PlaceDie 7=Finish 8=Recover 9=Fault')
-    print('  HR 1  PIP_PROGRESS  current target pip (0=not started, 1-6)')
+    print('  HR 1  PIP_PROGRESS  current target pip (1–6; odd=Beaker, even=Bunsen)')
     print('  HR 2  CONV_CMD      conveyor state machine (0=idle … 8=BeakerHasDie)')
     print('  HR 3  RETRIES       Bunsen cumulative reposition count')
-    print('  C  0  READY         1=Bunsen idle')
+    print('  HR 4  BEAKER_STATE  Beaker state (same codes as BUNSEN_STATE)')
+    print('  C  0  BUNSEN_READY  1=Bunsen placed die on front conveyor')
     print('  C  1  CAMERA_CLIENT 1=Bunsen holds camera token')
+    print('  C  2  BEAKER_READY  1=Beaker placed die on rear conveyor')
     StartTcpServer(context=context, address=(host, port))
 
 

@@ -66,7 +66,8 @@ class Camera:
     def getFrame(self):
         if self.hCamera is None:
             raise RuntimeError('Camera not initialised.')
-        pRawData, FrameHead = mvsdk.CameraGetImageBuffer(self.hCamera, 200)
+        mvsdk.CameraSoftTrigger(self.hCamera)
+        pRawData, FrameHead = mvsdk.CameraGetImageBuffer(self.hCamera, 2000)
         mvsdk.CameraImageProcess(self.hCamera, pRawData, self.pFrameBuffer, FrameHead)
         mvsdk.CameraReleaseImageBuffer(self.hCamera, pRawData)
         frame_data = (mvsdk.c_ubyte * FrameHead.uBytes).from_address(self.pFrameBuffer)

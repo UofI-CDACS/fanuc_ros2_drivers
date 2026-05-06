@@ -74,6 +74,7 @@ _MENU_STATIC = """
 ║  fs   Front conveyor stop                    ║
 ║  ft   Front conveyor timed (asks dir+secs)   ║
 ║  j    Go to home joints                      ║
+║  c    Camera snapshot (shows live window)    ║
 ║  d1–d5  Define / overwrite stored pose       ║
 ║  q  Quit                                     ║
 ╚══════════════════════════════════════════════╝"""
@@ -98,15 +99,18 @@ def _print_menu():
 # p1–p5 in the menu move to these. d1–d5 overwrite them at runtime.
 # w/p/r = 200.0 means "keep current orientation" (FANUC driver sentinel).
 # ---------------------------------------------------------------------------
-# p1–p3: joint positions  (joint1–joint6, degrees)
-# p4–p5: Cartesian        (x,y,z mm  w,p,r degrees; 200.0 = keep current)
-POSE_1 = dict(joint1=-49.388, joint2=36.993, joint3=24.010, joint4=67.703, joint5=-51.149, joint6=119.961)
-POSE_2 = dict(joint1=-70.999, joint2=51.903, joint3=8.141, joint4=174.404, joint5=-79.550, joint6=23.121)
+# p1–p3, p6–p7: joint positions  (joint1–joint6, degrees)
+# p4–p5:        Cartesian        (x,y,z mm  w,p,r degrees; 200.0 = keep current)
+POSE_1 = dict(joint1=-62.667, joint2=13.088, joint3=-25.034, joint4=-1.655, joint5=-65.618, joint6=-26.181)
+POSE_2 = dict(joint1=-64.747, joint2=15.950, joint3=-33.644, joint4=-1.767, joint5=-57.065, joint6=-23.823)
 POSE_3 = dict(joint1=0.0, joint2=0.0, joint3=0.0, joint4=0.0, joint5=-90.0, joint6=0.0)
-POSE_4 = dict(x=126.961, y=-582.177, z=152.102, w=-175.773, p=0.668, r=-89.634)
+POSE_4 = dict(x=-72.719, y=-404.0, z=352.581, w=-175.773, p=0.668, r=-89.634)
 POSE_5 = dict(x=126.961, y=-582.177, z=52.102, w=-175.773, p=0.668, r=-89.634)
+POSE_6 = dict(joint1=0.0, joint2=0.0, joint3=0.0, joint4=0.0, joint5=-90.0, joint6=0.0)
+POSE_7 = dict(joint1=0.0, joint2=0.0, joint3=0.0, joint4=0.0, joint5=-90.0, joint6=0.0)
 
-_stored_poses: dict = {'1': POSE_1, '2': POSE_2, '3': POSE_3, '4': POSE_4, '5': POSE_5}
+_stored_poses: dict = {'1': POSE_1, '2': POSE_2, '3': POSE_3, '4': POSE_4,
+                       '5': POSE_5, '6': POSE_6, '7': POSE_7}
 
 
 def _ask(prompt, default=''):
@@ -364,12 +368,46 @@ class DebugMenu:
         ok = self.n._send_joint(**HOME_JOINTS)
         print(f'  Home joints → {"OK" if ok else "FAILED"}')
 
-    # ---- stored position slots (1–5) ---------------------------------------
+    def do_camera_snapshot(self):
+        import cv2
+        import mvsdk
+        from camera import Camera
+        cam_ip = os.environ.get('CAMERA_IP', '10.8.4.19')
+        print(f'  Connecting to camera  IP={cam_ip} ...')
+
+        # Enumerate all visible devices and print their IPs so mismatches are obvious.
+        dev_list = mvsdk.CameraEnumerateDevice()
+        if not dev_list:
+            print('  [FAIL] No cameras found by SDK — check GigE cable / network.')
+            return
+        print(f'  SDK found {len(dev_list)} device(s):')
+        for i, dev in enumerate(dev_list):
+            try:
+                found_ip, _, _, _, _, _ = mvsdk.CameraGigeGetIp(dev)
+            except Exception:
+                found_ip = '(GiGE IP query failed)'
+            print(f'    [{i}] {dev.GetFriendlyName()}  IP={found_ip!r}')
+
+        cam = Camera(camera_ip=cam_ip)
+        if cam.hCamera is None:
+            print(f'  [FAIL] No device matched IP={cam_ip!r} — '
+                  f'check IP above and update CAMERA_IP env var or default in this file.')
+            return
+        try:
+            frame = cam.getFrame()
+            print(f'  Frame: {frame.shape[1]}x{frame.shape[0]}  —  press any key to close')
+            cv2.imshow('Bunsen camera snapshot', frame)
+            cv2.waitKey(0)
+            cv2.destroyAllWindows()
+        finally:
+            cam.disable()
+
+    # ---- stored position slots (1–7) ---------------------------------------
 
     def do_define_pose(self, slot: str):
         print(f'  Define pose slot {slot} (press Enter to keep current value):')
         existing = _stored_poses.get(slot)
-        is_joint = (existing is not None and 'joint1' in existing) or slot in ('1', '2', '3')
+        is_joint = (existing is not None and 'joint1' in existing) or slot in ('1', '2', '3', '6', '7')
         if is_joint:
             default = existing if existing and 'joint1' in existing else dict(joint1=0.0, joint2=0.0, joint3=0.0, joint4=0.0, joint5=-90.0, joint6=0.0)
             pose = {}
@@ -410,6 +448,7 @@ class DebugMenu:
             'o': self.do_gripper_open,
             'k': self.do_gripper_close,
             'j': self.do_home_joints,
+            'c': self.do_camera_snapshot,
         }
         while True:
             _print_menu()
@@ -429,10 +468,10 @@ class DebugMenu:
             elif choice == 'ft':
                 fn = self.do_conv_timed
             # Stored pose slots
-            elif len(choice) == 2 and choice[0] == 'p' and choice[1] in '12345':
+            elif len(choice) == 2 and choice[0] == 'p' and choice[1] in '1234567':
                 slot = choice[1]
                 fn = lambda s=slot: self.do_move_pose(s)
-            elif len(choice) == 2 and choice[0] == 'd' and choice[1] in '12345':
+            elif len(choice) == 2 and choice[0] == 'd' and choice[1] in '1234567':
                 slot = choice[1]
                 fn = lambda s=slot: self.do_define_pose(s)
             else:

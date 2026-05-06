@@ -26,11 +26,14 @@ from pymodbus.client import ModbusTcpClient
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from modbus_server import (
     REG_PIP_PROGRESS, REG_CONV_CMD, REG_RETRIES,
-    COIL_READY, COIL_CAMERA_CLIENT,
+    REG_BEAKER_STATE,
+    COIL_READY, COIL_CAMERA_CLIENT, COIL_BEAKER_READY,
     CONV_IDLE, CONV_BEAKER_WANTS_SEND, CONV_REAR_RUNNING,
     CONV_DIE_ON_REAR, CONV_BUNSEN_HAS_DIE,
     CONV_BUNSEN_WANTS_SEND, CONV_FRONT_RUNNING,
     CONV_DIE_ON_FRONT, CONV_BEAKER_HAS_DIE,
+    STATE_SETUP, STATE_WAIT, STATE_GRAB_DIE, STATE_PIP_COUNT,
+    STATE_PLACE_DIE, STATE_FINISH, STATE_RECOVER, STATE_FAULT,
 )
 
 POLL_INTERVAL             = 0.2
@@ -88,6 +91,10 @@ class Robot1Master(Node):
 
     def _mb_write_coil(self, addr, val):
         self.mb.write_coil(addr, bool(val))
+
+    def _set_state(self, state: int):
+        self.get_logger().info(f'Beaker state → {state}')
+        self._mb_write(REG_BEAKER_STATE, state)
 
     def _wait_conv(self, target, timeout=CONV_TIMEOUT):
         deadline = time.time() + timeout
@@ -227,6 +234,7 @@ class Robot1Master(Node):
                   (set camera token) → wait BUNSEN_HAS_DIE → IDLE
         """
         self.get_logger().info('Sending die to Bunsen via rear conveyor...')
+        self._set_state(STATE_PLACE_DIE)
         self._mb_write(REG_CONV_CMD, CONV_BEAKER_WANTS_SEND)
 
         if not self._wait_conv(CONV_REAR_RUNNING):
@@ -245,14 +253,16 @@ class Robot1Master(Node):
         time.sleep(REAR_CONVEYOR_TRAVEL_SECS)
         self._run_conveyor('stop')
 
-        # Hand camera token to Bunsen so it can read pip count
+        # Signal die is placed and set Beaker ready coil so Bunsen can grab
         self._mb_write(REG_CONV_CMD, CONV_DIE_ON_REAR)
         self._mb_write_coil(COIL_CAMERA_CLIENT, True)
+        self._mb_write_coil(COIL_BEAKER_READY, True)
 
         if not self._wait_conv(CONV_BUNSEN_HAS_DIE):
             self.get_logger().error('Timeout waiting for Bunsen to confirm pickup')
             return False
 
+        self._mb_write_coil(COIL_BEAKER_READY, False)
         self._mb_write(REG_CONV_CMD, CONV_IDLE)
         return True
 
@@ -294,6 +304,7 @@ class Robot1Master(Node):
     # ── Main game loop ────────────────────────────────────────────────────────
 
     def run(self):
+        self._set_state(STATE_SETUP)
         self.get_logger().info('Waiting for action servers...')
         self._cart.wait_for_server()
         self._joint.wait_for_server()
