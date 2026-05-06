@@ -22,7 +22,7 @@ from rclpy.action import ActionClient
 from fanuc_interfaces.action import Conveyor
 
 # ── Edit these to tune timing ─────────────────────────────────────────────────
-RUN_SECONDS = 5.0   # how long to run the belt forward
+RUN_SECONDS = 9.9   # how long to run the belt forward
 ROBOT_NAME  = 'Beaker'
 # ─────────────────────────────────────────────────────────────────────────────
 

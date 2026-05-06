@@ -42,7 +42,18 @@ from dice_game.pip_counter import count_pips, save_debug_image
 HOME_JOINTS   = (1.1, 1.5, -2.0, -1.7, -88.6, -30.0)
 PICK_ABOVE    = dict(x=470.0, y=-15.0,  z=-18.0,  w=179.9, p=0.0,   r=30.0)
 PICK_DOWN     = dict(x=470.0, y=-15.0,  z=-185.0, w=179.9, p=0.0,   r=30.0)
+# Re-orient drop: same position as pick but wrist rotated 90° (r=120° vs r=30°).
+# Die is set down in a new orientation, then picked back up at r=30° so the next
+# camera view sees a fresh face.  Follows DROP_POSE from Controlling_robots_using_claude.py.
+REORIENT_ABV  = dict(x=470.0, y=-15.0,  z=-18.0,  w=179.9, p=0.0,   r=120.0)  # CALIBRATE
+REORIENT_DWN  = dict(x=470.0, y=-15.0,  z=-185.0, w=179.9, p=0.0,   r=120.0)  # CALIBRATE
 CAMERA_POSE   = dict(x=490.0, y=890.0,  z=881.0,  w=73.0,  p=-66.0, r=-170.0)
+# Second camera view — joint pose that rotates J5 ~90° so the die face that was
+# resting on the table (the "bottom" at pick) points toward the camera.
+# This lets the code read both front and top with the camera (or two manual prompts)
+# and then use the chirality table to locate any target pip.
+# Fill in your calibrated joint angles and remove the "None" assignment.
+CAMERA_JOINT_2 = (50.731, 31.588, -14.992, 173.365, -103.358, -125.27)
 CONV_REAR_ABV = dict(x=-194.112, y=617.369,  z=200.840,  w=179.9, p=0.0,   r=120.0)
 CONV_REAR_DRP = dict(x=-194.112, y=617.369,  z=8.840,  w=179.9, p=0.0,   r=120.0)
 # Front conveyor — Bunsen sends die back here; needs physical calibration
@@ -58,7 +69,7 @@ CONVEYOR_TRAVEL_SECS = 5.0    # time for front belt (Bunsen-side, receiving die 
 POLL_INTERVAL        = 0.2
 
 # ── Edit this to tune how long the rear belt runs to deliver die to Bunsen ───
-REAR_CONVEYOR_TRAVEL_SECS = 5.0
+REAR_CONVEYOR_TRAVEL_SECS = 9.9
 
 # ── Modbus — mirrors modbus_server.py running on Bunsen ──────────────────────
 MODBUS_PORT = 5020
@@ -83,6 +94,25 @@ CONV_BUNSEN_WANTS_SEND = 5   # Bunsen: die ready, ask Beaker to start front belt
 CONV_FRONT_RUNNING     = 6   # Beaker: front belt running, Bunsen may place die
 CONV_DIE_ON_FRONT      = 7   # Bunsen: die placed on front belt
 CONV_BEAKER_HAS_DIE    = 8   # Beaker: die picked up
+
+# ── Standard western die chirality ────────────────────────────────────────────
+# (top_pip, front_pip) → right_pip   (all 24 valid orientations)
+# Opposite faces always sum to 7: 1-6, 2-5, 3-4.
+# Right-handed rule: when 1 is up and 2 faces you, 3 is to your right.
+_DIE_RIGHT = {
+    (1, 2): 3, (1, 3): 5, (1, 5): 4, (1, 4): 2,
+    (2, 6): 3, (2, 3): 1, (2, 1): 4, (2, 4): 6,
+    (3, 2): 6, (3, 6): 5, (3, 5): 1, (3, 1): 2,
+    (4, 2): 1, (4, 1): 5, (4, 5): 6, (4, 6): 2,
+    (5, 1): 3, (5, 3): 6, (5, 6): 4, (5, 4): 1,
+    (6, 5): 3, (6, 3): 2, (6, 2): 4, (6, 4): 5,
+}
+
+# Best rotation step index (into CAMERA_ROTATION_STEPS) for each die face.
+# Assumes increasing wrist roll brings the RIGHT face toward the camera.
+# If the robot moves to the opposite face, swap 'right' and 'left' indices (2↔5).
+# top/bottom are not reachable by wrist roll alone — re-pick needed if target is there.
+_FACE_STEP = {'front': 0, 'right': 2, 'back': 3, 'left': 5}
 
 
 class State(IntEnum):
@@ -258,18 +288,15 @@ class Robot1Controller(Node):
         Move to camera pose and rotate wrist in 60° steps (6 positions = full turn)
         looking for target pip count. Returns pip count when found, or 0 if the target
         face is not seen in any orientation. Robot stays at the matching rotation.
+
+        When camera is unavailable, falls back to _find_pip_manual() which prompts
+        the user to type the pip count they see at each rotation position.
         """
         self.get_logger().info(f'Scanning for pip={target} by rotating wrist...')
         self._send_cart(**CAMERA_POSE)
 
         if not self._camera_ok:
-            self.get_logger().warn('No camera — rotating through all positions then continuing')
-            for i, r_offset in enumerate(CAMERA_ROTATION_STEPS):
-                self._set_state(State.PIP_COUNT if i == 0 else State.ROTATE_PIP)
-                if r_offset != 0:
-                    self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
-                time.sleep(0.4)
-            return target   # assume correct so game keeps moving
+            return self._find_pip_manual(target)
 
         for i, r_offset in enumerate(CAMERA_ROTATION_STEPS):
             self._set_state(State.PIP_COUNT if i == 0 else State.ROTATE_PIP)
@@ -285,6 +312,136 @@ class Robot1Controller(Node):
 
         return 0
 
+    def _find_pip_manual(self, target: int) -> int:
+        """
+        Manual camera fallback — called when camera service is unavailable.
+
+        Robot is already at CAMERA_POSE (called from _find_pip_rotating).
+
+        1. Prompts for the front face (camera-facing) and top face (2 numbers).
+        2. Uses the standard die chirality table to compute all 6 faces.
+        3. Jumps directly to the rotation step most likely to show the target pip.
+        4. Prompts for confirmation at that step; if wrong, sweeps remaining steps.
+
+        Falls back to a full step-by-step scan if the (top, front) combination is
+        not a valid standard-die orientation.
+
+        Returns the target pip count when found, or 0 if not found on any face.
+        """
+        print(f'\n{"=" * 56}')
+        print(f'  MANUAL MODE  —  looking for pip {target}')
+        print(f'{"=" * 56}')
+
+        # ── View 1: front face at CAMERA_POSE ────────────────────────────────
+        print('\n  VIEW 1  —  die at camera position.')
+        front_pip = self._prompt_face('Front face (what you see facing the camera)')
+
+        # ── View 2: top face at CAMERA_JOINT_2 ───────────────────────────────
+        if CAMERA_JOINT_2 is not None:
+            print('\n  Moving to second view (J5 rotated ~90°)...')
+            self._send_joint(*CAMERA_JOINT_2)
+            print('  VIEW 2  —  bottom-of-table face now points at camera.')
+            top_pip = self._prompt_face('Top face  (what you see now)              ')
+            # Return to camera base before the rotation sweep
+            self._send_cart(**CAMERA_POSE)
+        else:
+            # CAMERA_JOINT_2 not calibrated yet — ask user to read top face in place
+            print('\n  VIEW 2  —  (CAMERA_JOINT_2 not set; look at the top of the die)')
+            top_pip = self._prompt_face('Top face  (what is pointing up)           ')
+
+        right_pip = _DIE_RIGHT.get((top_pip, front_pip))
+        if right_pip is None:
+            print(f'\n  ! ({top_pip}, {front_pip}) is not a valid standard-die orientation.')
+            print(f'  Falling back to step-by-step scan...')
+            return self._scan_all_steps(target)
+
+        back_pip   = 7 - front_pip
+        left_pip   = 7 - right_pip
+        bottom_pip = 7 - top_pip
+
+        print(f'\n  Die layout:')
+        print(f'    front={front_pip}  right={right_pip}  back={back_pip}'
+              f'  left={left_pip}  top={top_pip}  bottom={bottom_pip}')
+
+        face_map = {
+            'front': front_pip, 'right': right_pip,
+            'back':  back_pip,  'left':  left_pip,
+            'top':   top_pip,   'bottom': bottom_pip,
+        }
+        target_face = next((f for f, v in face_map.items() if v == target), None)
+        print(f'  Pip {target} is on the {target_face} face.')
+
+        if target_face in ('top', 'bottom'):
+            print(f'  Cannot reach the {target_face} face by wrist rotation — re-pick needed.')
+            return 0
+
+        # Best-guess step first, then sweep any remaining steps
+        best = _FACE_STEP[target_face]
+        step_order = [best] + [i for i in range(len(CAMERA_ROTATION_STEPS)) if i != best]
+
+        for i in step_order:
+            r_offset = CAMERA_ROTATION_STEPS[i]
+            self._set_state(State.PIP_COUNT if i == 0 else State.ROTATE_PIP)
+            if r_offset != 0:
+                self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
+
+            pips = self._prompt_pip(i, r_offset)
+            self.get_logger().info(f'  Position {i + 1}/6  r={r_offset:+.0f}°: {pips} pip(s)')
+            self._pub_pip.publish(Int32(data=pips))
+
+            if pips == target:
+                print(f'  >> Pip {target} found — continuing.\n')
+                return pips
+
+        print(f'  Pip {target} not found at any position.\n')
+        return 0
+
+    def _scan_all_steps(self, target: int) -> int:
+        """Fallback: step through all 6 rotation positions in order, prompting at each."""
+        for i, r_offset in enumerate(CAMERA_ROTATION_STEPS):
+            self._set_state(State.PIP_COUNT if i == 0 else State.ROTATE_PIP)
+            if r_offset != 0:
+                self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
+
+            pips = self._prompt_pip(i, r_offset)
+            self.get_logger().info(f'  Position {i + 1}/6  r={r_offset:+.0f}°: {pips} pip(s)')
+            self._pub_pip.publish(Int32(data=pips))
+
+            if pips == target:
+                print(f'  >> Pip {target} found — continuing.\n')
+                return pips
+
+        print(f'  Pip {target} not found at any position.\n')
+        return 0
+
+    @staticmethod
+    def _prompt_face(label: str) -> int:
+        """Prompt user for a die face pip count (1-6)."""
+        while True:
+            try:
+                val = int(input(f'  {label} [1-6]: ').strip())
+                if 1 <= val <= 6:
+                    return val
+            except (ValueError, EOFError):
+                pass
+            print('    Please enter a number from 1 to 6.')
+
+    @staticmethod
+    def _prompt_pip(step: int, r_offset: float) -> int:
+        """Prompt user for the pip count visible at the current rotation position."""
+        while True:
+            try:
+                raw = input(
+                    f'\n  Position {step + 1}/6  (wrist {r_offset:+.0f}°)'
+                    f'  —  pip count you see [1-6]: '
+                ).strip()
+                val = int(raw)
+                if 1 <= val <= 6:
+                    return val
+            except (ValueError, EOFError):
+                pass
+            print('    Please enter a whole number from 1 to 6.')
+
     # ── Robot moves ───────────────────────────────────────────────────────────
 
     def go_home(self):
@@ -298,11 +455,24 @@ class Robot1Controller(Node):
         self._send_gripper('close')
         self._send_cart(**PICK_ABOVE)
 
-    def put_dice_down(self):
-        """Return die to pickup spot and release — lets die re-orient on re-pick."""
+    def reorient_and_repick(self):
+        """
+        Drop die at REORIENT_DWN (wrist 90° offset from pick) then pick it back
+        up at PICK_DOWN (standard orientation).  The 90° offset means the gripper
+        releases a different die axis each time, so the next camera view sees a
+        fresh face.  Matches the DROP_POSE pattern in Controlling_robots_using_claude.py.
+        Calibrate REORIENT_ABV / REORIENT_DWN for the physical drop position.
+        """
+        self.get_logger().info('Re-orienting die — dropping at 90° wrist offset...')
+        self._send_cart(**REORIENT_ABV)
+        self._send_cart(**REORIENT_DWN)
+        self._send_gripper('open')
+        self._send_cart(**REORIENT_ABV)
+
+        self.get_logger().info('Re-picking die in standard orientation...')
         self._send_cart(**PICK_ABOVE)
         self._send_cart(**PICK_DOWN)
-        self._send_gripper('open')
+        self._send_gripper('close')
         self._send_cart(**PICK_ABOVE)
 
     # ── Conveyor handshake ────────────────────────────────────────────────────
@@ -419,10 +589,10 @@ class Robot1Controller(Node):
             # ── Phase 1: find pip = 1 ────────────────────────────────────────
             self.get_logger().info('\n=== PHASE 1: Searching for pip = 1 ===')
             self._set_pip_progress(0)
-            while True:
-                self._set_state(State.GRAB_DIE)
-                self.pick_dice()
+            self._set_state(State.GRAB_DIE)
+            self.pick_dice()
 
+            while True:
                 pips = self._find_pip_rotating(1, 'search')
                 self._pub_pip.publish(Int32(data=pips))
 
@@ -430,16 +600,16 @@ class Robot1Controller(Node):
                     self.get_logger().info('pip = 1 found — START STATE reached!')
                     break
 
-                self.get_logger().info('pip = 1 not on any face — re-picking...')
+                self.get_logger().info('pip = 1 not on any face — re-orienting die...')
                 self._set_state(State.RECOVER)
-                self.put_dice_down()
+                self.reorient_and_repick()
                 self.r1_retries += 1
 
             # ── Phase 2: sequential 1 → 6 ────────────────────────────────────
             self.get_logger().info('\n=== PHASE 2: Sequential 1 → 6 ===')
 
-            # Already holding pip=1 from Phase 1 — skip the first pick
-            skip_pick = True
+            # Already holding pip=1 from Phase 1
+            holding_die = True
 
             for target in range(1, 7):
                 round_retries = 0
@@ -447,11 +617,11 @@ class Robot1Controller(Node):
                 self._set_pip_progress(target)
 
                 while True:
-                    if not skip_pick:
+                    if not holding_die:
                         self._set_state(State.GRAB_DIE)
                         self.pick_dice()
+                    holding_die = False
 
-                    skip_pick = False
                     pips = self._find_pip_rotating(target, f'seq_t{target}_r{round_retries}')
                     self._pub_pip.publish(Int32(data=pips))
 
@@ -459,9 +629,10 @@ class Robot1Controller(Node):
                         self.get_logger().info(f'Correct pip ({pips}) — sending to Bunsen')
                         break
 
-                    self.get_logger().info(f'pip={target} not on any face — re-picking...')
+                    self.get_logger().info(f'pip={target} not on any face — re-orienting die...')
                     self._set_state(State.RECOVER)
-                    self.put_dice_down()
+                    self.reorient_and_repick()
+                    holding_die = True
                     round_retries += 1
                     self.r1_retries += 1
 
@@ -482,6 +653,7 @@ class Robot1Controller(Node):
                     self._set_state(State.FAULT)
                     break
 
+                holding_die = True
                 self.get_logger().info('Die received — moving to next target')
 
             # ── Results ───────────────────────────────────────────────────────
