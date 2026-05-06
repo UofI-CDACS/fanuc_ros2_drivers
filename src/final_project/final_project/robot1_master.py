@@ -44,12 +44,12 @@ HOME_JOINTS = (1.1, 1.5, -2.0, -1.7, -88.6, -30.0)
 PICK_ABOVE    = dict(x=470.0,    y=-15.0,   z=-18.0,   w=179.9, p=0.0, r=30.0)
 PICK_DOWN     = dict(x=470.0,    y=-15.0,   z=-185.0,  w=179.9, p=0.0, r=30.0)
 CAMERA_POSE   = dict(x=490.0,    y=890.0,   z=881.0,   w=73.0,  p=-66.0, r=-170.0)
-CONV_REAR_ABV = dict(x=-194.112, y=617.369, z=200.840, w=179.9, p=0.0, r=120.0)
-CONV_REAR_DRP = dict(x=-194.112, y=617.369, z=8.840,   w=179.9, p=0.0, r=120.0)
+CONV_REAR_ABV = dict(x=470.0, y=-15.0, z=-18.0,  w=179.9, p=0.0, r=120.0)
+CONV_REAR_DRP = dict(x=470.0, y=-15.0, z=-185.0, w=179.9, p=0.0, r=120.0)
 
 # Front conveyor — Bunsen sends die back here after verifying pip
-CONV_FRNT_ABV = dict(x=142.579, y=617.369, z=200.168, w=179.9, p=0.0, r=120.0)  # CALIBRATE
-CONV_FRNT_DWN = dict(x=142.579, y=617.369, z=8.168,   w=179.9, p=0.0, r=120.0)  # CALIBRATE
+CONV_FRNT_ABV = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)  # CALIBRATE
+CONV_FRNT_DWN = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)  # CALIBRATE
 
 # 60° wrist rotation steps — covers all 6 die faces in one sweep
 CAMERA_ROTATION_STEPS = [0, 60, 120, 180, -120, -60]
