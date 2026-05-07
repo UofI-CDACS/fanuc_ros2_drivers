@@ -277,6 +277,7 @@ class BeakerDebug(Node):
         if target_face == 'top':
             print(f'  Pip {target} on top — rotating via TOP_FACE_JNT...')
             self._send_joint(*TOP_FACE_JNT)
+            self._send_gripper('open')
             pips = self._get_face(f'confirm_top')
             self._send_cart(**PICK_ABOVE)
             if pips == target:

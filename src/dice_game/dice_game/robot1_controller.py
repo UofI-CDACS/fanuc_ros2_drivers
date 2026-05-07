@@ -328,6 +328,7 @@ class Robot1Controller(Node):
         if target_face == 'top':
             self.get_logger().info(f'  pip {target} on top — rotating via TOP_FACE_JNT')
             self._send_joint(*TOP_FACE_JNT)
+            self._send_gripper('open')
             pips = self._capture_count_at(f'{label}_top_confirm')
             self._pub_pip.publish(Int32(data=pips))
             self._send_cart(**PICK_ABOVE)
@@ -406,6 +407,7 @@ class Robot1Controller(Node):
         if target_face == 'top':
             print(f'  Pip {target} on top — rotating via TOP_FACE_JNT...')
             self._send_joint(*TOP_FACE_JNT)
+            self._send_gripper('open')
             pips = self._prompt_face(f'Confirm — pip you see now (expect {target})')
             self._pub_pip.publish(Int32(data=pips))
             self._send_cart(**PICK_ABOVE)
