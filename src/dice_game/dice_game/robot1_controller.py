@@ -54,7 +54,7 @@ CONV_FRNT_ABV = dict(x=142.579, y=617.369, z=200.168, w=179.9, p=0.0, r=120.0)  
 CONV_FRNT_DWN = dict(x=142.579, y=617.369, z=8.168, w=179.9, p=0.0, r=120.0)   # CALIBRATE
 
 # Second camera view — joint angles that tilt the die so its top face points at camera
-CAMERA_JOINT_2 = (50.731, 31.588, -14.992, 173.365, -103.358, -125.27)
+CAMERA_JOINT_2 = (50.731, 31.588, -14.992, 173.365, -103.358, 125.27)
 
 # Wrist roll offsets (degrees) applied to CAMERA_POSE['r'] — 60° steps, 6 faces
 CAMERA_ROTATION_STEPS = [0, 60, 120, 180, -120, -60]
