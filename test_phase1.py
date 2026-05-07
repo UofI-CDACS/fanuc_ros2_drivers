@@ -79,7 +79,8 @@ class Phase1Test(Node):
         self._conv    = ActionClient(self, Conveyor,      f'/{ROBOT_NAME}/conveyor')
         self._cam     = self.create_client(CaptureImage,  '/dice_game/capture_image')
 
-        self._camera_ok = False
+        self._camera_ok  = False
+        self._drop_done  = False  # True when die was already placed via TOP_FACE_JNT
 
     # ── Action helpers ────────────────────────────────────────────────────────
 
@@ -237,13 +238,14 @@ class Phase1Test(Node):
             print('  Pip 1 is on top face — rotating via TOP_FACE_JNT...')
             self._send_joint(*TOP_FACE_JNT)
             self._send_gripper('open')
-            pips = self._get_face('confirm_top')
-            self._send_cart(**PICK_ABOVE)
-            if pips == 1:
-                print('  >> Pip 1 confirmed after top-face joint move!\n')
-                return True
-            print(f'  Expected pip 1 after top-face move but saw {pips} — re-orient needed.\n')
-            return False
+            self._send_cart(**CONV_REAR_ABV)
+            self.get_logger().info(f'Running rear belt for {RUN_SECONDS}s...')
+            self._send_conveyor('forward')
+            time.sleep(RUN_SECONDS)
+            self._send_conveyor('stop')
+            self._drop_done = True
+            print('  >> Die placed and belt run via top-face path.\n')
+            return True
 
         # ── Rotate wrist to bring pip-1 face toward camera ───────────────────
         r_offset = CAMERA_ROTATION_STEPS[_FACE_STEP[target_face]]
@@ -313,17 +315,18 @@ class Phase1Test(Node):
             self._send_cart(**PICK_ABOVE)
 
         # ── 3. Drop on rear conveyor pip-1-face-up via calibrated joint pose ──
-        self.get_logger().info('Moving above rear conveyor...')
-        self._send_cart(**CONV_REAR_ABV)
-        self.get_logger().info('Moving to conveyor drop position (pip-1 face up)...')
-        self._send_joint(*CONV_REAR_JNT)
-        self._send_gripper('open')
-        self._send_cart(**CONV_REAR_ABV)
+        if not self._drop_done:
+            self.get_logger().info('Moving above rear conveyor...')
+            self._send_cart(**CONV_REAR_ABV)
+            self.get_logger().info('Moving to conveyor drop position (pip-1 face up)...')
+            self._send_joint(*CONV_REAR_JNT)
+            self._send_gripper('open')
+            self._send_cart(**CONV_REAR_ABV)
 
-        self.get_logger().info(f'Running rear belt for {RUN_SECONDS}s...')
-        self._send_conveyor('forward')
-        time.sleep(RUN_SECONDS)
-        self._send_conveyor('stop')
+            self.get_logger().info(f'Running rear belt for {RUN_SECONDS}s...')
+            self._send_conveyor('forward')
+            time.sleep(RUN_SECONDS)
+            self._send_conveyor('stop')
 
         self.get_logger().info(
             f'Done. Robot at CONV_REAR_ABV. Retries: {retries}.'
