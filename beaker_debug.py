@@ -49,6 +49,7 @@ CAMERA_POSE   = dict(x=490.0,    y=890.0,   z=881.0,   w=73.0,  p=-66.0, r=-170.
 CONV_REAR_ABV  = dict(x=-194.112, y=617.369, z=200.840, w=179.9, p=0.0,   r=120.0)
 CONV_REAR_DRP  = dict(x=-194.112, y=617.369, z=8.840,   w=179.9, p=0.0,   r=120.0)
 CONV_REAR_JNT  = (102.382, 51.116, -128.327, 164.504, -126.179, -159.536)
+TOP_FACE_JNT   = (-34.6, 56.534, -70.0, -55.8, -99.7, 170.5)
 CONV_FRNT_ABV  = dict(x=142.579,  y=617.369, z=200.168, w=179.9, p=0.0,   r=120.0)  # CALIBRATE
 CONV_FRNT_DWN  = dict(x=142.579,  y=617.369, z=8.168,   w=179.9, p=0.0,   r=120.0)  # CALIBRATE
 
@@ -269,8 +270,18 @@ class BeakerDebug(Node):
         print(f'  Die: front={front_pip} right={right_pip} back={back_pip}'
               f' left={left_pip} top={top_pip}  →  pip {target} on {target_face}')
 
-        if target_face in ('top', 'bottom'):
-            print(f'  Cannot reach {target_face} by wrist rotation — re-orient needed.')
+        if target_face == 'bottom':
+            print(f'  Cannot reach bottom by wrist rotation — re-orient needed.')
+            return False
+
+        if target_face == 'top':
+            print(f'  Pip {target} on top — rotating via TOP_FACE_JNT...')
+            self._send_joint(*TOP_FACE_JNT)
+            pips = self._get_face(f'confirm_top')
+            if pips == target:
+                print(f'  >> Pip {target} confirmed after top-face joint move!\n')
+                return True
+            print(f'  Saw {pips}, expected {target} — re-orient needed.\n')
             return False
 
         # Rotate to target face

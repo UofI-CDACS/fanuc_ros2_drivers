@@ -44,6 +44,8 @@ CAMERA_POSE   = dict(x=490.0,    y=890.0,   z=881.0,   w=73.0,  p=-66.0, r=-170.
 CONV_REAR_ABV  = dict(x=-194.112, y=617.369, z=200.840, w=179.9, p=0.0,   r=120.0)
 # Joint pose that drops the die with the front-face pip facing up on the belt
 CONV_REAR_JNT  = (102.382, 51.116, -128.327, 164.504, -126.179, -159.536)
+# Joint pose that brings the top face toward the camera when pip is on top
+TOP_FACE_JNT   = (-34.6, 56.534, -70.0, -55.8, -99.7, 170.5)
 
 # Second camera view — joint angles that tilt the die so its top face points at camera
 CAMERA_JOINT_2 = (50.731, 31.588, -14.992, 173.365, -103.358, 125.27)
@@ -227,8 +229,18 @@ class Phase1Test(Node):
         target_face = next((f for f, v in face_map.items() if v == 1), None)
         print(f'  Pip 1 is on the {target_face} face.')
 
-        if target_face in ('top', 'bottom'):
-            print('  Cannot reach that face by wrist rotation — re-orient needed.')
+        if target_face == 'bottom':
+            print('  Pip 1 is on bottom face — re-orient needed.')
+            return False
+
+        if target_face == 'top':
+            print('  Pip 1 is on top face — rotating via TOP_FACE_JNT...')
+            self._send_joint(*TOP_FACE_JNT)
+            pips = self._get_face('confirm_top')
+            if pips == 1:
+                print('  >> Pip 1 confirmed after top-face joint move!\n')
+                return True
+            print(f'  Expected pip 1 after top-face move but saw {pips} — re-orient needed.\n')
             return False
 
         # ── Rotate wrist to bring pip-1 face toward camera ───────────────────

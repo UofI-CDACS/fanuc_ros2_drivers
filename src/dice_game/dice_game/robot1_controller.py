@@ -49,6 +49,8 @@ CONV_REAR_ABV  = dict(x=-194.112, y=617.369,  z=200.840,  w=179.9, p=0.0,   r=12
 CONV_REAR_DRP  = dict(x=-194.112, y=617.369,  z=8.840,  w=179.9, p=0.0,   r=120.0)
 # Joint pose that drops the die with the front-face pip facing up on the rear belt
 CONV_REAR_JNT  = (102.382, 51.116, -128.327, 164.504, -126.179, -159.536)
+# Joint pose that brings the top face toward the camera when pip is on top
+TOP_FACE_JNT   = (-34.6, 56.534, -70.0, -55.8, -99.7, 170.5)
 # Front conveyor — Bunsen sends die back here; needs physical calibration
 CONV_FRNT_ABV = dict(x=142.579, y=617.369, z=200.168, w=179.9, p=0.0, r=120.0)   # CALIBRATE
 CONV_FRNT_DWN = dict(x=142.579, y=617.369, z=8.168, w=179.9, p=0.0, r=120.0)   # CALIBRATE
@@ -320,8 +322,18 @@ class Robot1Controller(Node):
         target_face = next((f for f, v in face_map.items() if v == target), None)
         self.get_logger().info(f'  pip {target} is on the {target_face} face')
 
-        if target_face in ('top', 'bottom'):
+        if target_face == 'bottom':
             return 0   # caller will reorient and repick
+
+        if target_face == 'top':
+            self.get_logger().info(f'  pip {target} on top — rotating via TOP_FACE_JNT')
+            self._send_joint(*TOP_FACE_JNT)
+            pips = self._capture_count_at(f'{label}_top_confirm')
+            self._pub_pip.publish(Int32(data=pips))
+            if pips == target:
+                return pips
+            self.get_logger().warn(f'  Expected {target} after top-face move but saw {pips} — returning 0')
+            return 0
 
         # Rotate wrist to bring target face toward camera
         r_offset = CAMERA_ROTATION_STEPS[_FACE_STEP[target_face]]
@@ -386,8 +398,19 @@ class Robot1Controller(Node):
         target_face = next((f for f, v in face_map.items() if v == target), None)
         print(f'  Pip {target} is on the {target_face} face.')
 
-        if target_face in ('top', 'bottom'):
-            print(f'  Cannot reach {target_face} by wrist rotation — re-orient needed.')
+        if target_face == 'bottom':
+            print(f'  Cannot reach bottom by wrist rotation — re-orient needed.')
+            return 0
+
+        if target_face == 'top':
+            print(f'  Pip {target} on top — rotating via TOP_FACE_JNT...')
+            self._send_joint(*TOP_FACE_JNT)
+            pips = self._prompt_face(f'Confirm — pip you see now (expect {target})')
+            self._pub_pip.publish(Int32(data=pips))
+            if pips == target:
+                print(f'  >> Pip {target} confirmed after top-face joint move!\n')
+                return pips
+            print(f'  Saw {pips}, expected {target} — returning 0.\n')
             return 0
 
         # Rotate wrist to bring target face toward camera
