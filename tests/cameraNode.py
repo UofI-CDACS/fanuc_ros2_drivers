@@ -1,4 +1,6 @@
 import asyncio
+import sys
+import threading
 
 import rclpy
 from rclpy.node import Node
@@ -83,11 +85,21 @@ class CameraNode(Node):
 def main(args=None):
     rclpy.init(args=args)
     node = CameraNode()
+
+    spin_thread = threading.Thread(target=rclpy.spin, args=(node,), daemon=True)
+    spin_thread.start()
+
+    print("Press 'q' + Enter to quit")
     try:
-        rclpy.spin(node)
+        for line in sys.stdin:
+            if line.strip().lower() == 'q':
+                break
+    except (KeyboardInterrupt, EOFError):
+        pass
     finally:
         node.destroy_node()
         rclpy.shutdown()
+        spin_thread.join(timeout=2.0)
 
 
 if __name__ == '__main__':
