@@ -488,7 +488,8 @@ class Robot1Controller(Node):
             self._mb_write(REG_CONV_CMD, CONV_IDLE)
             return False
 
-        # Drop die onto rear belt pip-face-up via calibrated joint pose
+        # Approach above conveyor, then drop pip-face-up via calibrated joint pose
+        self._send_cart(**CONV_REAR_ABV)
         self._send_joint(*CONV_REAR_JNT)
         self._send_gripper('open')
         self._send_cart(**CONV_REAR_ABV)

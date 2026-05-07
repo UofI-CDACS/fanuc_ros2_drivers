@@ -294,6 +294,8 @@ class Phase1Test(Node):
             self._send_cart(**PICK_ABOVE)
 
         # ── 3. Drop on rear conveyor pip-1-face-up via calibrated joint pose ──
+        self.get_logger().info('Moving above rear conveyor...')
+        self._send_cart(**CONV_REAR_ABV)
         self.get_logger().info('Moving to conveyor drop position (pip-1 face up)...')
         self._send_joint(*CONV_REAR_JNT)
         self._send_gripper('open')

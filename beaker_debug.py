@@ -220,7 +220,8 @@ class BeakerDebug(Node):
         self._retries += 1
 
     def _place_on_conveyor(self):
-        """Drop die at CONV_REAR_JNT (pip-face-up) and retreat to CONV_REAR_ABV."""
+        """Approach above conveyor, drop pip-face-up, retreat to CONV_REAR_ABV."""
+        self._send_cart(**CONV_REAR_ABV)
         self._send_joint(*CONV_REAR_JNT)
         self._send_gripper('open')
         self._send_cart(**CONV_REAR_ABV)
