@@ -42,26 +42,32 @@ from dice_game.pip_counter import count_pips, save_debug_image
 HOME_JOINTS   = (1.1, 1.5, -2.0, -1.7, -88.6, -30.0)
 PICK_ABOVE    = dict(x=470.0, y=-15.0,  z=-18.0,  w=179.9, p=0.0,   r=30.0)
 PICK_DOWN     = dict(x=470.0, y=-15.0,  z=-185.0, w=179.9, p=0.0,   r=30.0)
-# Re-orient drop: same position as pick but wrist rotated 90° (r=120° vs r=30°).
-# Die is set down in a new orientation, then picked back up at r=30° so the next
-# camera view sees a fresh face.  Follows DROP_POSE from Controlling_robots_using_claude.py.
-REORIENT_ABV  = dict(x=470.0, y=-15.0,  z=-18.0,  w=179.9, p=0.0,   r=120.0)  # CALIBRATE
-REORIENT_DWN  = dict(x=470.0, y=-15.0,  z=-185.0, w=179.9, p=0.0,   r=120.0)  # CALIBRATE
 CAMERA_POSE   = dict(x=490.0, y=890.0,  z=881.0,  w=73.0,  p=-66.0, r=-170.0)
-# Second camera view — joint pose that rotates J5 ~90° so the die face that was
-# resting on the table (the "bottom" at pick) points toward the camera.
-# This lets the code read both front and top with the camera (or two manual prompts)
-# and then use the chirality table to locate any target pip.
-# Fill in your calibrated joint angles and remove the "None" assignment.
-CAMERA_JOINT_2 = (50.731, 31.588, -14.992, 173.365, -103.358, -125.27)
-CONV_REAR_ABV = dict(x=-194.112, y=617.369,  z=200.840,  w=179.9, p=0.0,   r=120.0)
-CONV_REAR_DRP = dict(x=-194.112, y=617.369,  z=8.840,  w=179.9, p=0.0,   r=120.0)
+CONV_REAR_ABV  = dict(x=-194.112, y=617.369,  z=200.840,  w=179.9, p=0.0,   r=120.0)
+CONV_REAR_DRP  = dict(x=-194.112, y=617.369,  z=8.840,  w=179.9, p=0.0,   r=120.0)
+# Joint pose that drops the die with the front-face pip facing up on the rear belt
+CONV_REAR_JNT  = (102.382, 51.116, -128.327, 164.504, -126.179, -159.536)
 # Front conveyor — Bunsen sends die back here; needs physical calibration
 CONV_FRNT_ABV = dict(x=142.579, y=617.369, z=200.168, w=179.9, p=0.0, r=120.0)   # CALIBRATE
 CONV_FRNT_DWN = dict(x=142.579, y=617.369, z=8.168, w=179.9, p=0.0, r=120.0)   # CALIBRATE
 
-# Wrist roll offsets applied to CAMERA_POSE['r'] — 60° steps cover all 6 faces
+# Second camera view — joint angles that tilt the die so its top face points at camera
+CAMERA_JOINT_2 = (50.731, 31.588, -14.992, 173.365, -103.358, -125.27)
+
+# Wrist roll offsets (degrees) applied to CAMERA_POSE['r'] — 60° steps, 6 faces
 CAMERA_ROTATION_STEPS = [0, 60, 120, 180, -120, -60]
+
+# Standard western die chirality: (top_pip, front_pip) → right_pip (all 24 orientations)
+_DIE_RIGHT = {
+    (1, 2): 3, (1, 3): 5, (1, 5): 4, (1, 4): 2,
+    (2, 6): 3, (2, 3): 1, (2, 1): 4, (2, 4): 6,
+    (3, 2): 6, (3, 6): 5, (3, 5): 1, (3, 1): 2,
+    (4, 2): 1, (4, 1): 5, (4, 5): 6, (4, 6): 2,
+    (5, 1): 3, (5, 3): 6, (5, 6): 4, (5, 4): 1,
+    (6, 5): 3, (6, 3): 2, (6, 2): 4, (6, 4): 5,
+}
+# Best CAMERA_ROTATION_STEPS index to bring each face toward the camera
+_FACE_STEP = {'front': 0, 'right': 2, 'back': 3, 'left': 5}
 
 DEBUG_IMG_DIR        = '/home/colin/Desktop'
 CONV_TIMEOUT         = 60.0   # seconds to wait for conveyor handshake steps
@@ -94,25 +100,6 @@ CONV_BUNSEN_WANTS_SEND = 5   # Bunsen: die ready, ask Beaker to start front belt
 CONV_FRONT_RUNNING     = 6   # Beaker: front belt running, Bunsen may place die
 CONV_DIE_ON_FRONT      = 7   # Bunsen: die placed on front belt
 CONV_BEAKER_HAS_DIE    = 8   # Beaker: die picked up
-
-# ── Standard western die chirality ────────────────────────────────────────────
-# (top_pip, front_pip) → right_pip   (all 24 valid orientations)
-# Opposite faces always sum to 7: 1-6, 2-5, 3-4.
-# Right-handed rule: when 1 is up and 2 faces you, 3 is to your right.
-_DIE_RIGHT = {
-    (1, 2): 3, (1, 3): 5, (1, 5): 4, (1, 4): 2,
-    (2, 6): 3, (2, 3): 1, (2, 1): 4, (2, 4): 6,
-    (3, 2): 6, (3, 6): 5, (3, 5): 1, (3, 1): 2,
-    (4, 2): 1, (4, 1): 5, (4, 5): 6, (4, 6): 2,
-    (5, 1): 3, (5, 3): 6, (5, 6): 4, (5, 4): 1,
-    (6, 5): 3, (6, 3): 2, (6, 2): 4, (6, 4): 5,
-}
-
-# Best rotation step index (into CAMERA_ROTATION_STEPS) for each die face.
-# Assumes increasing wrist roll brings the RIGHT face toward the camera.
-# If the robot moves to the opposite face, swap 'right' and 'left' indices (2↔5).
-# top/bottom are not reachable by wrist roll alone — re-pick needed if target is there.
-_FACE_STEP = {'front': 0, 'right': 2, 'back': 3, 'left': 5}
 
 
 class State(IntEnum):
@@ -155,9 +142,10 @@ class Robot1Controller(Node):
         self._pub_ready    = self.create_publisher(Bool,   '/dice_game/dice_ready',       10)
 
         # ── Counters ──────────────────────────────────────────────────────────
-        self.r1_retries   = 0
+        self.r1_retries    = 0
         self._total_counts = []   # (target, actual_pip, round_retries)
-        self._camera_ok   = False
+        self._camera_ok    = False
+        self._step_mode    = False
 
     # ── Modbus helpers ────────────────────────────────────────────────────────
 
@@ -285,31 +273,69 @@ class Robot1Controller(Node):
 
     def _find_pip_rotating(self, target: int, label: str) -> int:
         """
-        Move to camera pose and rotate wrist in 60° steps (6 positions = full turn)
-        looking for target pip count. Returns pip count when found, or 0 if the target
-        face is not seen in any orientation. Robot stays at the matching rotation.
+        Two-view chirality approach:
+          VIEW 1 at CAMERA_POSE    → front face (camera or manual)
+          VIEW 2 at CAMERA_JOINT_2 → top face   (camera or manual)
+          Chirality table          → compute all 6 faces, locate target
+          Wrist rotation           → bring target face toward camera
+          Confirm                  → return target pip if correct, 0 otherwise.
 
-        When camera is unavailable, falls back to _find_pip_manual() which prompts
-        the user to type the pip count they see at each rotation position.
+        Falls back to _scan_all_steps() if (top,front) is not a valid orientation.
+        Falls back to _find_pip_manual() if camera is unavailable.
         """
-        self.get_logger().info(f'Scanning for pip={target} by rotating wrist...')
+        self.get_logger().info(f'Looking for pip={target} using chirality...')
         self._send_cart(**CAMERA_POSE)
+        self._set_state(State.PIP_COUNT)
 
         if not self._camera_ok:
             return self._find_pip_manual(target)
 
-        for i, r_offset in enumerate(CAMERA_ROTATION_STEPS):
-            self._set_state(State.PIP_COUNT if i == 0 else State.ROTATE_PIP)
+        # VIEW 1: front face
+        front_pip = self._capture_count_at(f'{label}_front')
+        self.get_logger().info(f'  VIEW 1 (front): {front_pip} pip(s)')
 
-            if r_offset != 0:
-                self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
+        # VIEW 2: top face
+        self._send_joint(*CAMERA_JOINT_2)
+        top_pip = self._capture_count_at(f'{label}_top')
+        self.get_logger().info(f'  VIEW 2 (top):   {top_pip} pip(s)')
+        self._send_cart(**CAMERA_POSE)
 
-            pips = self._capture_count_at(f'{label}_rot{i}')
-            self.get_logger().info(f'  r_offset={r_offset:+.0f}°: {pips} pip(s)')
+        # Chirality lookup
+        right_pip = _DIE_RIGHT.get((top_pip, front_pip))
+        if right_pip is None:
+            self.get_logger().warn(
+                f'({top_pip},{front_pip}) not a valid die orientation — scanning all'
+            )
+            return self._scan_all_steps(target)
 
-            if pips == target:
-                return pips
+        back_pip   = 7 - front_pip
+        left_pip   = 7 - right_pip
+        face_map = {
+            'front': front_pip, 'right': right_pip,
+            'back':  back_pip,  'left':  left_pip,
+            'top':   top_pip,   'bottom': 7 - top_pip,
+        }
+        target_face = next((f for f, v in face_map.items() if v == target), None)
+        self.get_logger().info(f'  pip {target} is on the {target_face} face')
 
+        if target_face in ('top', 'bottom'):
+            return 0   # caller will reorient and repick
+
+        # Rotate wrist to bring target face toward camera
+        r_offset = CAMERA_ROTATION_STEPS[_FACE_STEP[target_face]]
+        if r_offset != 0:
+            self._set_state(State.ROTATE_PIP)
+            self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
+
+        # Confirm
+        pips = self._capture_count_at(f'{label}_confirm')
+        self.get_logger().info(f'  Confirm at r={r_offset:+.0f}°: {pips} pip(s)')
+        self._pub_pip.publish(Int32(data=pips))
+
+        if pips == target:
+            return pips
+
+        self.get_logger().warn(f'  Chirality predicted {target} but saw {pips} — returning 0')
         return 0
 
     def _find_pip_manual(self, target: int) -> int:
@@ -318,97 +344,84 @@ class Robot1Controller(Node):
 
         Robot is already at CAMERA_POSE (called from _find_pip_rotating).
 
-        1. Prompts for the front face (camera-facing) and top face (2 numbers).
-        2. Uses the standard die chirality table to compute all 6 faces.
-        3. Jumps directly to the rotation step most likely to show the target pip.
-        4. Prompts for confirmation at that step; if wrong, sweeps remaining steps.
-
-        Falls back to a full step-by-step scan if the (top, front) combination is
-        not a valid standard-die orientation.
-
-        Returns the target pip count when found, or 0 if not found on any face.
+        Two-view chirality with manual prompts:
+          VIEW 1 → front face  |  VIEW 2 → top face
+          Chirality table → locate target face → rotate wrist → confirm.
+        Falls back to _scan_all_steps() if orientation is invalid.
+        Returns target pip if found, 0 otherwise.
         """
-        print(f'\n{"=" * 56}')
-        print(f'  MANUAL MODE  —  looking for pip {target}')
-        print(f'{"=" * 56}')
+        print(f'\n{"─" * 52}')
+        print(f'  Manual mode — looking for pip {target}')
+        print(f'{"─" * 52}')
 
-        # ── View 1: front face at CAMERA_POSE ────────────────────────────────
-        print('\n  VIEW 1  —  die at camera position.')
+        # VIEW 1: front face
+        print('\n  VIEW 1 — die at camera position.')
         front_pip = self._prompt_face('Front face (what you see facing the camera)')
 
-        # ── View 2: top face at CAMERA_JOINT_2 ───────────────────────────────
-        if CAMERA_JOINT_2 is not None:
-            print('\n  Moving to second view (J5 rotated ~90°)...')
-            self._send_joint(*CAMERA_JOINT_2)
-            print('  VIEW 2  —  bottom-of-table face now points at camera.')
-            top_pip = self._prompt_face('Top face  (what you see now)              ')
-            # Return to camera base before the rotation sweep
-            self._send_cart(**CAMERA_POSE)
-        else:
-            # CAMERA_JOINT_2 not calibrated yet — ask user to read top face in place
-            print('\n  VIEW 2  —  (CAMERA_JOINT_2 not set; look at the top of the die)')
-            top_pip = self._prompt_face('Top face  (what is pointing up)           ')
+        # VIEW 2: top face
+        print('  Moving to VIEW 2 (top face)...')
+        self._send_joint(*CAMERA_JOINT_2)
+        top_pip = self._prompt_face('Top face  (what you see now)              ')
+        self._send_cart(**CAMERA_POSE)
 
+        # Chirality lookup
         right_pip = _DIE_RIGHT.get((top_pip, front_pip))
         if right_pip is None:
-            print(f'\n  ! ({top_pip}, {front_pip}) is not a valid standard-die orientation.')
-            print(f'  Falling back to step-by-step scan...')
+            print(f'\n  ! ({top_pip}, {front_pip}) not a valid die orientation.')
+            print('  Falling back to full 6-position scan...')
             return self._scan_all_steps(target)
 
-        back_pip   = 7 - front_pip
-        left_pip   = 7 - right_pip
-        bottom_pip = 7 - top_pip
-
-        print(f'\n  Die layout:')
-        print(f'    front={front_pip}  right={right_pip}  back={back_pip}'
-              f'  left={left_pip}  top={top_pip}  bottom={bottom_pip}')
+        back_pip = 7 - front_pip
+        left_pip = 7 - right_pip
+        print(f'\n  Die layout:  front={front_pip}  right={right_pip}  back={back_pip}'
+              f'  left={left_pip}  top={top_pip}  bottom={7 - top_pip}')
 
         face_map = {
             'front': front_pip, 'right': right_pip,
             'back':  back_pip,  'left':  left_pip,
-            'top':   top_pip,   'bottom': bottom_pip,
+            'top':   top_pip,   'bottom': 7 - top_pip,
         }
         target_face = next((f for f, v in face_map.items() if v == target), None)
         print(f'  Pip {target} is on the {target_face} face.')
 
         if target_face in ('top', 'bottom'):
-            print(f'  Cannot reach the {target_face} face by wrist rotation — re-pick needed.')
+            print(f'  Cannot reach {target_face} by wrist rotation — re-orient needed.')
             return 0
 
-        # Best-guess step first, then sweep any remaining steps
-        best = _FACE_STEP[target_face]
-        step_order = [best] + [i for i in range(len(CAMERA_ROTATION_STEPS)) if i != best]
+        # Rotate wrist to bring target face toward camera
+        r_offset = CAMERA_ROTATION_STEPS[_FACE_STEP[target_face]]
+        if r_offset != 0:
+            self._set_state(State.ROTATE_PIP)
+            self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
 
-        for i in step_order:
-            r_offset = CAMERA_ROTATION_STEPS[i]
-            self._set_state(State.PIP_COUNT if i == 0 else State.ROTATE_PIP)
-            if r_offset != 0:
-                self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
+        pips = self._prompt_face(f'Confirm — pip you see now (expect {target})')
+        self._pub_pip.publish(Int32(data=pips))
 
-            pips = self._prompt_pip(i, r_offset)
-            self.get_logger().info(f'  Position {i + 1}/6  r={r_offset:+.0f}°: {pips} pip(s)')
-            self._pub_pip.publish(Int32(data=pips))
+        if pips == target:
+            print(f'  >> Pip {target} confirmed!\n')
+            return pips
 
-            if pips == target:
-                print(f'  >> Pip {target} found — continuing.\n')
-                return pips
-
-        print(f'  Pip {target} not found at any position.\n')
+        print(f'  Saw {pips}, expected {target} — returning 0.\n')
         return 0
 
     def _scan_all_steps(self, target: int) -> int:
-        """Fallback: step through all 6 rotation positions in order, prompting at each."""
+        """Fallback: sweep all 6 wrist rotations looking for target pip."""
         for i, r_offset in enumerate(CAMERA_ROTATION_STEPS):
             self._set_state(State.PIP_COUNT if i == 0 else State.ROTATE_PIP)
             if r_offset != 0:
                 self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
 
-            pips = self._prompt_pip(i, r_offset)
-            self.get_logger().info(f'  Position {i + 1}/6  r={r_offset:+.0f}°: {pips} pip(s)')
+            if self._camera_ok:
+                pips = self._capture_count_at(f'scan_rot{i}')
+            else:
+                pips = self._prompt_face(
+                    f'Scan pos {i + 1}/6  (wrist {r_offset:+.0f}°) — pip you see'
+                )
+            self.get_logger().info(f'  Scan {i + 1}/6  r={r_offset:+.0f}°: {pips} pip(s)')
             self._pub_pip.publish(Int32(data=pips))
 
             if pips == target:
-                print(f'  >> Pip {target} found — continuing.\n')
+                print(f'  >> Pip {target} found at scan position {i + 1}!\n')
                 return pips
 
         print(f'  Pip {target} not found at any position.\n')
@@ -426,22 +439,6 @@ class Robot1Controller(Node):
                 pass
             print('    Please enter a number from 1 to 6.')
 
-    @staticmethod
-    def _prompt_pip(step: int, r_offset: float) -> int:
-        """Prompt user for the pip count visible at the current rotation position."""
-        while True:
-            try:
-                raw = input(
-                    f'\n  Position {step + 1}/6  (wrist {r_offset:+.0f}°)'
-                    f'  —  pip count you see [1-6]: '
-                ).strip()
-                val = int(raw)
-                if 1 <= val <= 6:
-                    return val
-            except (ValueError, EOFError):
-                pass
-            print('    Please enter a whole number from 1 to 6.')
-
     # ── Robot moves ───────────────────────────────────────────────────────────
 
     def go_home(self):
@@ -457,20 +454,18 @@ class Robot1Controller(Node):
 
     def reorient_and_repick(self):
         """
-        Drop die at REORIENT_DWN (wrist 90° offset from pick) then pick it back
-        up at PICK_DOWN (standard orientation).  The 90° offset means the gripper
-        releases a different die axis each time, so the next camera view sees a
-        fresh face.  Matches the DROP_POSE pattern in Controlling_robots_using_claude.py.
-        Calibrate REORIENT_ABV / REORIENT_DWN for the physical drop position.
+        Release die at PICK_DOWN to let it settle in a new orientation, then
+        immediately pick it back up.  Dropping at the same spot without a wrist
+        offset is gentler on the die and avoids needing a separate calibrated
+        REORIENT position.
         """
-        self.get_logger().info('Re-orienting die — dropping at 90° wrist offset...')
-        self._send_cart(**REORIENT_ABV)
-        self._send_cart(**REORIENT_DWN)
-        self._send_gripper('open')
-        self._send_cart(**REORIENT_ABV)
-
-        self.get_logger().info('Re-picking die in standard orientation...')
+        self.get_logger().info('Re-orienting die — releasing at pick spot...')
         self._send_cart(**PICK_ABOVE)
+        self._send_cart(**PICK_DOWN)
+        self._send_gripper('open')
+        self._send_cart(**PICK_ABOVE)
+
+        self.get_logger().info('Re-picking die...')
         self._send_cart(**PICK_DOWN)
         self._send_gripper('close')
         self._send_cart(**PICK_ABOVE)
@@ -493,9 +488,8 @@ class Robot1Controller(Node):
             self._mb_write(REG_CONV_CMD, CONV_IDLE)
             return False
 
-        # Drop die onto rear belt then run it toward Bunsen
-        self._send_cart(**CONV_REAR_ABV)
-        self._send_cart(**CONV_REAR_DRP)
+        # Drop die onto rear belt pip-face-up via calibrated joint pose
+        self._send_joint(*CONV_REAR_JNT)
         self._send_gripper('open')
         self._send_cart(**CONV_REAR_ABV)
 
