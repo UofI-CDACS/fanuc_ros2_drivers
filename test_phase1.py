@@ -79,8 +79,7 @@ class Phase1Test(Node):
         self._conv    = ActionClient(self, Conveyor,      f'/{ROBOT_NAME}/conveyor')
         self._cam     = self.create_client(CaptureImage,  '/dice_game/capture_image')
 
-        self._camera_ok  = False
-        self._drop_done  = False  # True when die was already placed via TOP_FACE_JNT
+        self._camera_ok = False
 
     # ── Action helpers ────────────────────────────────────────────────────────
 
@@ -180,90 +179,74 @@ class Phase1Test(Node):
 
     def find_pip1(self) -> bool:
         """
-        Two-view chirality approach:
-          VIEW 1 at CAMERA_POSE    → front face pip
-          VIEW 2 at CAMERA_JOINT_2 → top face pip
-          Chirality table          → compute all 6 faces, locate pip 1
-          Wrist rotation           → bring pip-1 face toward camera
-          Confirm → robot stays at that rotation, ready for CONV_REAR_JNT drop.
-
-        Returns True  — pip 1 is now on the front face (camera-facing).
-        Returns False — pip 1 is on top/bottom (re-orient needed).
+        Chirality loop — handles top-face flips internally.
+        Returns True  — pip 1 is positioned for CONV_REAR_JNT drop (no confirmation).
+        Returns False — pip 1 on bottom face; caller must reorient+repick.
         """
-        print(f'\n{"=" * 54}')
-        print('  Finding pip 1 — chirality approach')
-        print(f'{"=" * 54}')
+        while True:
+            print(f'\n{"=" * 54}')
+            print('  Finding pip 1 — chirality approach')
+            print(f'{"=" * 54}')
 
-        # ── VIEW 1: front face at CAMERA_POSE ────────────────────────────────
-        self.get_logger().info('Moving to camera position (VIEW 1 — front face)...')
-        self._send_cart(**CAMERA_POSE)
-        print('\n  VIEW 1 — die at camera position.')
-        front_pip = self._get_face('front')
-        print(f'  Front face: {front_pip}')
+            # ── VIEW 1: front face ────────────────────────────────────────────
+            self.get_logger().info('Moving to camera position (VIEW 1 — front face)...')
+            self._send_cart(**CAMERA_POSE)
+            print('\n  VIEW 1 — die at camera position.')
+            front_pip = self._get_face('front')
+            print(f'  Front face: {front_pip}')
 
-        # ── VIEW 2: top face at CAMERA_JOINT_2 ───────────────────────────────
-        self.get_logger().info('Moving to VIEW 2 (top face)...')
-        self._send_joint(*CAMERA_JOINT_2)
-        print('\n  VIEW 2 — J5 tilted, top face toward camera.')
-        top_pip = self._get_face('top')
-        print(f'  Top face: {top_pip}')
-        self._send_cart(**CAMERA_POSE)   # return to base before any rotation
+            # ── VIEW 2: top face ──────────────────────────────────────────────
+            self.get_logger().info('Moving to VIEW 2 (top face)...')
+            self._send_joint(*CAMERA_JOINT_2)
+            print('\n  VIEW 2 — J5 tilted, top face toward camera.')
+            top_pip = self._get_face('top')
+            print(f'  Top face: {top_pip}')
+            self._send_cart(**CAMERA_POSE)
 
-        # ── Chirality lookup ──────────────────────────────────────────────────
-        right_pip = _DIE_RIGHT.get((top_pip, front_pip))
-        if right_pip is None:
-            print(f'\n  ! ({top_pip}, {front_pip}) not a valid die orientation.')
-            print('  Falling back to full 6-position scan...')
-            return self._scan_for_pip1()
+            # ── Chirality lookup ──────────────────────────────────────────────
+            right_pip = _DIE_RIGHT.get((top_pip, front_pip))
+            if right_pip is None:
+                print(f'\n  ! ({top_pip}, {front_pip}) not a valid die orientation.')
+                print('  Falling back to full 6-position scan...')
+                return self._scan_for_pip1()
 
-        back_pip   = 7 - front_pip
-        left_pip   = 7 - right_pip
-        bottom_pip = 7 - top_pip
-        print(f'\n  Die layout:  front={front_pip}  right={right_pip}  back={back_pip}'
-              f'  left={left_pip}  top={top_pip}  bottom={bottom_pip}')
+            back_pip   = 7 - front_pip
+            left_pip   = 7 - right_pip
+            bottom_pip = 7 - top_pip
+            print(f'\n  Die layout:  front={front_pip}  right={right_pip}  back={back_pip}'
+                  f'  left={left_pip}  top={top_pip}  bottom={bottom_pip}')
 
-        face_map = {
-            'front': front_pip, 'right': right_pip,
-            'back':  back_pip,  'left':  left_pip,
-            'top':   top_pip,   'bottom': bottom_pip,
-        }
-        target_face = next((f for f, v in face_map.items() if v == 1), None)
-        print(f'  Pip 1 is on the {target_face} face.')
+            face_map = {
+                'front': front_pip, 'right': right_pip,
+                'back':  back_pip,  'left':  left_pip,
+                'top':   top_pip,   'bottom': bottom_pip,
+            }
+            target_face = next((f for f, v in face_map.items() if v == 1), None)
+            print(f'  Pip 1 is on the {target_face} face.')
 
-        if target_face == 'bottom':
-            print('  Pip 1 is on bottom face — re-orient needed.')
-            return False
+            if target_face == 'bottom':
+                print('  Pip 1 is on bottom face — re-orient needed.')
+                return False
 
-        if target_face == 'top':
-            print('  Pip 1 is on top face — going home then flipping via TOP_FACE_JNT...')
-            self._send_joint(*HOME_JOINTS)
-            self._send_joint(*TOP_FACE_JNT)
-            self._send_gripper('open')
-            self._send_joint(*HOME_JOINTS)
-            self._send_cart(**CONV_REAR_ABV)
-            self.get_logger().info(f'Running rear belt for {RUN_SECONDS}s...')
-            self._send_conveyor('forward')
-            time.sleep(RUN_SECONDS)
-            self._send_conveyor('stop')
-            self._drop_done = True
-            print('  >> Die placed and belt run via top-face path.\n')
+            if target_face == 'top':
+                print('  Pip 1 on top — flipping via TOP_FACE_JNT then repicking...')
+                self._send_joint(*HOME_JOINTS)
+                self._send_joint(*TOP_FACE_JNT)
+                self._send_gripper('open')
+                self._send_joint(*HOME_JOINTS)
+                self._send_cart(**PICK_ABOVE)
+                self._send_cart(**PICK_DOWN)
+                self._send_gripper('close')
+                self._send_cart(**PICK_ABOVE)
+                continue  # re-run chirality with new orientation
+
+            # ── Front/side face — rotate wrist, trust chirality ───────────────
+            r_offset = CAMERA_ROTATION_STEPS[_FACE_STEP[target_face]]
+            if r_offset != 0:
+                self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
+
+            print(f'  >> Pip 1 positioned (chirality). r_offset={r_offset:+.0f}°\n')
             return True
-
-        # ── Rotate wrist to bring pip-1 face toward camera ───────────────────
-        r_offset = CAMERA_ROTATION_STEPS[_FACE_STEP[target_face]]
-        if r_offset != 0:
-            self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
-
-        # ── Confirm ───────────────────────────────────────────────────────────
-        pips = self._get_face(f'confirm_r{r_offset:+.0f}')
-        self.get_logger().info(f'  Confirmation at r_offset={r_offset:+.0f}°: {pips} pip(s)')
-
-        if pips == 1:
-            print('  >> Pip 1 confirmed on front face!\n')
-            return True
-
-        print(f'  Chirality predicted pip 1 but saw {pips} — re-orient needed.\n')
-        return False
 
     def _scan_for_pip1(self) -> bool:
         """Fallback: step through all 6 wrist rotations looking for pip 1."""
@@ -316,19 +299,21 @@ class Phase1Test(Node):
             self._send_gripper('close')
             self._send_cart(**PICK_ABOVE)
 
-        # ── 3. Drop on rear conveyor pip-1-face-up via calibrated joint pose ──
-        if not self._drop_done:
-            self.get_logger().info('Moving above rear conveyor...')
-            self._send_cart(**CONV_REAR_ABV)
-            self.get_logger().info('Moving to conveyor drop position (pip-1 face up)...')
-            self._send_joint(*CONV_REAR_JNT)
-            self._send_gripper('open')
-            self._send_cart(**CONV_REAR_ABV)
+        # ── 3. Final check then drop on rear conveyor ────────────────────────
+        pips = self._get_face('pre_drop')
+        self.get_logger().info(f'Pre-drop check: {pips} pip(s) facing camera.')
 
-            self.get_logger().info(f'Running rear belt for {RUN_SECONDS}s...')
-            self._send_conveyor('forward')
-            time.sleep(RUN_SECONDS)
-            self._send_conveyor('stop')
+        self.get_logger().info('Moving above rear conveyor...')
+        self._send_cart(**CONV_REAR_ABV)
+        self.get_logger().info('Moving to conveyor drop position (pip-1 face up)...')
+        self._send_joint(*CONV_REAR_JNT)
+        self._send_gripper('open')
+        self._send_cart(**CONV_REAR_ABV)
+
+        self.get_logger().info(f'Running rear belt for {RUN_SECONDS}s...')
+        self._send_conveyor('forward')
+        time.sleep(RUN_SECONDS)
+        self._send_conveyor('stop')
 
         self.get_logger().info(
             f'Done. Robot at CONV_REAR_ABV. Retries: {retries}.'
