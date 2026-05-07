@@ -101,13 +101,13 @@ def _print_menu():
 # ---------------------------------------------------------------------------
 # p1–p3, p6–p7: joint positions  (joint1–joint6, degrees)
 # p4–p5:        Cartesian        (x,y,z mm  w,p,r degrees; 200.0 = keep current)
-POSE_1 = dict(joint1=-62.667, joint2=13.088, joint3=-25.034, joint4=-1.655, joint5=-65.618, joint6=-26.181)
-POSE_2 = dict(joint1=-64.747, joint2=15.950, joint3=-33.644, joint4=-1.767, joint5=-57.065, joint6=-23.823)
-POSE_3 = dict(joint1=0.0, joint2=0.0, joint3=0.0, joint4=0.0, joint5=-90.0, joint6=0.0)
+POSE_1 = dict(joint1=-42.142, joint2=31.965, joint3=-39.884, joint4=-3.262, joint5=-49.758, joint6=-133.223)
+POSE_2 = dict(joint1=-28.210, joint2=69.225, joint3=-47.417, joint4=32.772, joint5=-119.359, joint6=-156.490)
+POSE_3 = dict(joint1=-39.274, joint2=28.202, joint3=-41.965, joint4=-5.168, joint5=-46.045, joint6=142.250)
 POSE_4 = dict(x=-72.719, y=-404.0, z=352.581, w=-175.773, p=0.668, r=-89.634)
 POSE_5 = dict(x=126.961, y=-582.177, z=52.102, w=-175.773, p=0.668, r=-89.634)
-POSE_6 = dict(joint1=0.0, joint2=0.0, joint3=0.0, joint4=0.0, joint5=-90.0, joint6=0.0)
-POSE_7 = dict(joint1=0.0, joint2=0.0, joint3=0.0, joint4=0.0, joint5=-90.0, joint6=0.0)
+POSE_6 = dict(joint1=-42.010, joint2=20.282, joint3=.918, joint4=-1.881, joint5=-90.859, joint6=-48.146)
+POSE_7 = dict(joint1=-42.015, joint2=31.966, joint3=-39.884, joint4=-2.453, joint5=-50.084, joint6=-46.540)
 
 _stored_poses: dict = {'1': POSE_1, '2': POSE_2, '3': POSE_3, '4': POSE_4,
                        '5': POSE_5, '6': POSE_6, '7': POSE_7}

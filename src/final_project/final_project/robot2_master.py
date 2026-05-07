@@ -48,7 +48,7 @@ POLL_INTERVAL        = 0.2
 HOME_JOINTS = dict(joint1=0.0, joint2=0.0, joint3=0.0,
                    joint4=0.0, joint5=-90.0, joint6=0.0)
 
-CONVEYOR_WAIT_POSE = dict(x=-72.719, y=-404.0, z=352.581, w=-175.773, p=0.668, r=-89.634)
+CONVEYOR_WAIT_POSE = dict(joint1=-77.477, joint2=-12.035, joint3=-2.185, joint4=-1.566, joint5=-88.860, joint6=-12.605)
 
 REAR_CONV_ABOVE  = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)     # CALIBRATE
 REAR_CONV_PICKUP = dict(x=0.0, y=0.0, z=0.0, w=0.0, p=0.0, r=0.0)     # CALIBRATE

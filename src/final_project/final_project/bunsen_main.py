@@ -43,19 +43,22 @@ from modbus_server import (
     STATE_SETUP, STATE_WAIT, STATE_GRAB_DIE, STATE_PIP_COUNT,
     STATE_PLACE_DIE, STATE_FINISH, STATE_FAULT,
     STATE_NAMES,
-    CONV_IDLE, CONV_REAR_RUNNING, CONV_DIE_ON_REAR, CONV_BUNSEN_HAS_DIE,
+    CONV_IDLE, CONV_BEAKER_WANTS_SEND, CONV_REAR_RUNNING, CONV_DIE_ON_REAR,
+    CONV_BUNSEN_HAS_DIE, CONV_BUNSEN_WANTS_SEND, CONV_FRONT_RUNNING,
+    CONV_DIE_ON_FRONT, CONV_BEAKER_HAS_DIE,
 )
 
 # ---------------------------------------------------------------------------
 # Tuning constants — adjust before each run
 # ---------------------------------------------------------------------------
-GRIPPER_OPEN_WIDTH  = 150   # mm  (OnRobot)
+GRIPPER_OPEN_WIDTH  = 120   # mm  (OnRobot)
 GRIPPER_OPEN_FORCE  = 30    # N
 GRIPPER_CLOSE_WIDTH = 70    # mm
 GRIPPER_CLOSE_FORCE = 50    # N
 
-FRONT_CONV_REVERSE_SECS = 9.9   # how long to run front belt backward after placing die
+REAR_CONV_TRAVEL_SECS   = 5.0   # seconds after DIE_ON_REAR before die reaches pickup spot (unused — Beaker pre-travels)
 CAMERA_SETTLE_SECS      = 0.4   # pause after moving before capturing
+GRIPPER_SETTLE_SECS     = 1.5   # pause after gripper open/close before next move
 POLL_INTERVAL           = 0.2   # Modbus polling rate (seconds)
 CONV_TIMEOUT            = 60.0  # max wait for a conveyor handshake step
 MAX_PIP_RETRIES         = 20    # give up pip search after this many put-down + re-picks
@@ -76,16 +79,22 @@ REAR_CONV_PICKUP = dict(joint1=-95.108, joint2=18.648, joint3=-32.133, joint4=-1
 SAFE_HOLD_POSE = dict(joint1=0.0, joint2=0.0, joint3=0.0, joint4=0.0, joint5=-90.0, joint6=0.0)    # CALIBRATE
 
 # Camera positions — joint angles at which Bunsen presents die to overhead camera
-CAM_POSE_1 = dict(joint1=-49.388, joint2=36.993, joint3=24.010, joint4=67.703, joint5=-51.149, joint6=119.961)
-CAM_POSE_2 = dict(joint1=-70.999, joint2=51.903, joint3=8.141, joint4=174.404, joint5=-79.550, joint6=23.121)
+CAM_POSE_1 = dict(joint1=-69.532, joint2=23.453, joint3=9.053, joint4=4.350, joint5=-11.355, joint6=-4.712)
+CAM_POSE_2 = dict(joint1=-67.702, joint2=41.934, joint3=0.924, joint4=5.952, joint5=70.592, joint6=-4.709)
 
 # Table spot for die re-orientation — put die down here between pip-count attempts
 TABLE_PLACE_ABOVE = dict(joint1=-42.010, joint2=20.282, joint3=.918, joint4=-1.881, joint5=-90.859, joint6=-48.146)
 TABLE_PLACE_DOWN  = dict(joint1=-42.015, joint2=31.966, joint3=-39.884, joint4=-2.453, joint5=-50.084, joint6=-46.540)
 
+# Re-grip position — approach die on table from a different angle to expose other faces
+TABLE_REPOS_1 = dict(joint1=-42.142, joint2=31.965, joint3=-39.884, joint4=-3.262, joint5=-49.758, joint6=-133.223)
+TABLE_REPOS_2 = dict(joint1=-28.210, joint2=69.225, joint3=-47.417, joint4=32.772, joint5=-119.359, joint6=-156.490)
+TABLE_REPOS_3 = dict(joint1=-28.898, joint2=61.730, joint3=-43.216, joint4=35.709, joint5=-121.764, joint6=-145.216)
+TABLE_REPOS_PICK = dict(joint1=-42.015, joint2=31.304, joint3=-38.739, joint4=-2.413, joint5=-51.228, joint6=39.646)
+
 # Front conveyor — Bunsen places die here to send back to Beaker
-FRONT_CONV_ABOVE = dict(joint1=0.0, joint2=0.0, joint3=0.0, joint4=0.0, joint5=-90.0, joint6=0.0)  # CALIBRATE
-FRONT_CONV_PLACE = dict(joint1=0.0, joint2=0.0, joint3=0.0, joint4=0.0, joint5=-90.0, joint6=0.0)  # CALIBRATE
+FRONT_CONV_ABOVE  = dict(joint1=-62.667, joint2=13.088, joint3=-25.034, joint4=-1.655, joint5=-65.618, joint6=-26.181)
+FRONT_CONV_PLACE  = dict(joint1=-64.747, joint2=15.950, joint3=-33.644, joint4=-1.767, joint5=-57.065, joint6=-23.823)
 
 # Final placement — pip 6, placed in front of Bunsen for display
 FINAL_PLACE_ABOVE = dict(joint1=18.885, joint2=-3.830, joint3=-27.348, joint4=0.106, joint5=-62.685, joint6=-18.934)
@@ -246,6 +255,17 @@ def _make_node():
             rclpy.spin_until_future_complete(self, res)
             return res.result().result.success
 
+        def _move(self, retries: int = 3, **kw) -> bool:
+            """_send_joint with automatic retry on rejection."""
+            for attempt in range(retries):
+                if attempt > 0:
+                    self.get_logger().warn(f'Joint move rejected — retry {attempt}/{retries - 1}')
+                    time.sleep(GRIPPER_SETTLE_SECS)
+                if self._send_joint(**kw):
+                    return True
+            self.get_logger().error('Joint move failed after all retries')
+            return False
+
         def _run_conveyor(self, command: str) -> bool:
             if not self._conv.wait_for_server(timeout_sec=5.0):
                 self.get_logger().error('Conveyor server timeout')
@@ -360,17 +380,15 @@ def _make_node():
 
             self._send_joint(**CONVEYOR_WAIT_POSE)
 
-            print('  [Wait] Polling for Beaker state=PlaceDie AND Beaker ready coil...')
+            print('  [Wait] Polling for CONV_CMD=DIE_ON_REAR (Beaker placed die on belt)...')
             deadline = time.time() + (5.0 if self._step_mode else float('inf'))
             while True:
-                beaker_state = self._mb_read(REG_BEAKER_STATE)
-                beaker_ready = self._mb_read_coil(COIL_BEAKER_READY)
-                if beaker_state == STATE_PLACE_DIE and beaker_ready:
+                conv = self._mb_read(REG_CONV_CMD)
+                if conv == CONV_DIE_ON_REAR:
                     break
                 if self._step_mode and time.time() >= deadline:
-                    print('  [Wait] Step mode: 5 s elapsed — simulating Beaker ready.')
-                    self._mb_write(REG_BEAKER_STATE, STATE_PLACE_DIE)
-                    self._mb_write_coil(COIL_BEAKER_READY, True)
+                    print('  [Wait] Step mode: 5 s elapsed — simulating Beaker placed die.')
+                    self._mb_write(REG_CONV_CMD, CONV_DIE_ON_REAR)
                     break
                 time.sleep(POLL_INTERVAL)
 
@@ -389,9 +407,13 @@ def _make_node():
             self._send_joint(**REAR_CONV_ABOVE)
             self._send_joint(**REAR_CONV_PICKUP)
             self._close_gripper()
-
-            print('  [GrabDie] Die grabbed — returning to conveyor wait pose.')
+            time.sleep(2.0)
             self._send_joint(**REAR_CONV_ABOVE)
+
+            # Acknowledge pickup — Beaker resets to IDLE on seeing this
+            self._mb_write(REG_CONV_CMD, CONV_BUNSEN_HAS_DIE)
+            print('  [GrabDie] Die grabbed — signalled BUNSEN_HAS_DIE.')
+
             self._send_joint(**CONVEYOR_WAIT_POSE)
             self._set_state(STATE_PIP_COUNT)
 
@@ -402,90 +424,98 @@ def _make_node():
         def _state_pip_count(self):
             self._set_state(STATE_PIP_COUNT)
             target = self._mb_read(REG_PIP_PROGRESS)
-
-            if target % 2 == 1:
-                # pip_progress still shows odd (Beaker's pip) — Bunsen targets next even
-                target = target + 1
-
             print(f'  [PipCount] Target pip: {target}')
 
-            j6_delta  = CAM_POSE_2['joint6'] - CAM_POSE_1['joint6']
-            j6_offset = 0.0  # accumulated wrist rotation relative to original pickup
+            self._mb_write_coil(COIL_CAMERA_CLIENT, True)
 
-            for attempt in range(1, MAX_PIP_RETRIES + 1):
-                print(f'  [PipCount] Attempt {attempt}/{MAX_PIP_RETRIES}  '
-                      f'(j6_offset={j6_offset:.1f}°)...')
-
-                # Camera pose with current wrist offset applied
-                cam1 = {**CAM_POSE_1, 'joint6': CAM_POSE_1['joint6'] + j6_offset}
-                cam2 = {**CAM_POSE_2, 'joint6': CAM_POSE_2['joint6'] + j6_offset}
-
-                # Position 1
-                self._send_joint(**cam1)
+            def _check_two_views(label_a, label_b):
+                ok1 = self._move(**CAM_POSE_1)
+                print(f'  [PipCount] CAM_POSE_1 {"OK" if ok1 else "FAILED/UNREACHABLE"}')
                 time.sleep(CAMERA_SETTLE_SECS)
-                face1 = self._capture_pip(f'position 1 (attempt {attempt})')
-                print(f'    CAM_POSE_1 → {face1} pip(s)')
+                fa = self._capture_pip(label_a)
+                print(f'  [PipCount] {label_a} → {fa} pip(s)')
 
-                if face1 == target:
-                    print(f'  [PipCount] Target pip {target} confirmed at position 1!')
-                    self._mb_write(REG_PIP_PROGRESS, target)
-                    self._send_joint(**CONVEYOR_WAIT_POSE)
-                    self._set_state(STATE_FINISH if target == 6 else STATE_PLACE_DIE)
-                    return
-
-                # Position 2
-                self._send_joint(**cam2)
+                ok2 = self._move(**CAM_POSE_2)
+                print(f'  [PipCount] CAM_POSE_2 {"OK" if ok2 else "FAILED/UNREACHABLE"}')
                 time.sleep(CAMERA_SETTLE_SECS)
-                face2 = self._capture_pip(f'position 2 (attempt {attempt})')
-                print(f'    CAM_POSE_2 → {face2} pip(s)')
+                fb = self._capture_pip(label_b)
+                print(f'  [PipCount] {label_b} → {fb} pip(s)')
 
-                if face2 == target:
-                    print(f'  [PipCount] Target pip {target} confirmed at position 2!')
-                    self._mb_write(REG_PIP_PROGRESS, target)
-                    self._send_joint(**CONVEYOR_WAIT_POSE)
-                    self._set_state(STATE_FINISH if target == 6 else STATE_PLACE_DIE)
-                    return
+                self._move(**CAM_POSE_1)
+                return fa, fb
 
-                # Neither position shows target — place die and re-pick with chirality
-                print(f'  [PipCount] pip {target} not visible — placing die on table...')
+            def _place_die():
+                # Place die on table from current hold position
+                self._move(**TABLE_PLACE_ABOVE)
+                time.sleep(GRIPPER_SETTLE_SECS)
+                self._move(**TABLE_PLACE_DOWN)
+                time.sleep(GRIPPER_SETTLE_SECS)
+                self._open_gripper()
+                time.sleep(GRIPPER_SETTLE_SECS)
+                self._move(**TABLE_PLACE_ABOVE)
+                time.sleep(GRIPPER_SETTLE_SECS)
+
+            def _regrip():
+                # Die is already on table, robot is at TABLE_PLACE_ABOVE
+                self._open_gripper()
+                time.sleep(GRIPPER_SETTLE_SECS)
+                self._move(**TABLE_REPOS_1)
+                time.sleep(GRIPPER_SETTLE_SECS)
+                self._close_gripper()
+                time.sleep(GRIPPER_SETTLE_SECS)
+                self._move(**TABLE_PLACE_ABOVE)
+                time.sleep(GRIPPER_SETTLE_SECS)
+                self._move(**TABLE_REPOS_3)
+                time.sleep(GRIPPER_SETTLE_SECS)
+                self._move(**TABLE_REPOS_2)
+                time.sleep(GRIPPER_SETTLE_SECS)
+                self._open_gripper()
+                time.sleep(GRIPPER_SETTLE_SECS)
+                self._move(**TABLE_REPOS_PICK)
+                time.sleep(GRIPPER_SETTLE_SECS)
+                self._close_gripper()
+                time.sleep(GRIPPER_SETTLE_SECS)
+                self._move(**TABLE_PLACE_ABOVE)
+                time.sleep(GRIPPER_SETTLE_SECS)
+
+            # Attempt 1
+            face1, face2 = _check_two_views('VIEW 1', 'VIEW 2')
+            if target in (face1, face2):
+                print(f'  [PipCount] Found pip {target} (attempt 1) — proceeding.')
+                self._mb_write_coil(COIL_CAMERA_CLIENT, False)
+                self._move(**CONVEYOR_WAIT_POSE)
+                self._set_state(STATE_FINISH if target == 6 else STATE_PLACE_DIE)
+                return
+            print(f'  [PipCount] Attempt 1: not found — placing die to re-grip...')
+            time.sleep(CAMERA_SETTLE_SECS)
+            _place_die()
+            _regrip()
+
+            # Attempt 2
+            face3, face4 = _check_two_views('VIEW 1', 'VIEW 2')
+            if target in (face3, face4):
+                print(f'  [PipCount] Found pip {target} (attempt 2) — proceeding.')
+                self._mb_write_coil(COIL_CAMERA_CLIENT, False)
+                self._move(**CONVEYOR_WAIT_POSE)
+                self._set_state(STATE_FINISH if target == 6 else STATE_PLACE_DIE)
+                return
+
+            # Attempt 3 — regrip again
+            print(f'  [PipCount] pip {target} not found — placing die to re-grip (attempt 3)...')
+            time.sleep(CAMERA_SETTLE_SECS)
+            _place_die()
+            _regrip()
+            face5, face6 = _check_two_views('VIEW 1', 'VIEW 2')
+            if target not in (face5, face6):
+                print(f'  [PipCount] pip {target} not found on any of 6 faces — sending anyway.')
                 self._bunsen_retries += 1
                 self._mb_write(REG_RETRIES, self._bunsen_retries)
+            else:
+                print(f'  [PipCount] Found pip {target} — proceeding.')
 
-                # Place die (positions also use current offset so die lands consistently)
-                place_above = {**TABLE_PLACE_ABOVE,
-                               'joint6': TABLE_PLACE_ABOVE['joint6'] + j6_offset}
-                place_down  = {**TABLE_PLACE_DOWN,
-                               'joint6': TABLE_PLACE_DOWN['joint6']  + j6_offset}
-                self._send_joint(**place_above)
-                self._send_joint(**place_down)
-                self._open_gripper()
-                self._send_joint(**place_above)
-
-                # Chirality: pick the rotation that puts target face up at CAM_POSE_1
-                steps = _chirality_j6_steps(face1, face2, target)
-                if steps is not None:
-                    additional = steps * j6_delta
-                    j6_offset += additional
-                    print(f'  [PipCount] Chirality: {steps} step(s) × '
-                          f'{j6_delta:.1f}° = +{additional:.1f}°  '
-                          f'(total offset {j6_offset:.1f}°) to show pip {target}')
-                else:
-                    # Target on front/back axis — advance one step and try again
-                    j6_offset += j6_delta
-                    print(f'  [PipCount] Chirality: pip {target} on front/back face — '
-                          f'advancing one step (j6_offset={j6_offset:.1f}°)')
-
-                pickup_above = {**TABLE_PLACE_ABOVE,
-                                'joint6': TABLE_PLACE_ABOVE['joint6'] + j6_offset}
-                pickup_down  = {**TABLE_PLACE_DOWN,
-                                'joint6': TABLE_PLACE_DOWN['joint6']  + j6_offset}
-                self._send_joint(**pickup_above)
-                self._send_joint(**pickup_down)
-                self._close_gripper()
-                self._send_joint(**pickup_above)
-
-            print(f'  [PipCount] ERROR: exceeded {MAX_PIP_RETRIES} attempts.')
-            self._set_state(STATE_FAULT)
+            self._mb_write_coil(COIL_CAMERA_CLIENT, False)
+            self._move(**CONVEYOR_WAIT_POSE)
+            self._set_state(STATE_FINISH if target == 6 else STATE_PLACE_DIE)
 
         # ====================================================================
         # State: PLACE_DIE
@@ -496,23 +526,23 @@ def _make_node():
             target = self._mb_read(REG_PIP_PROGRESS)
             print(f'  [PlaceDie] Placing pip {target} on front conveyor...')
 
-            self._send_joint(**FRONT_CONV_ABOVE)
-            self._send_joint(**FRONT_CONV_PLACE)
+            self._move(**FRONT_CONV_ABOVE)
+            self._move(**FRONT_CONV_PLACE)
             self._open_gripper()
-            self._send_joint(**FRONT_CONV_ABOVE)
+            time.sleep(GRIPPER_SETTLE_SECS)
+            self._move(**FRONT_CONV_ABOVE)
 
-            print(f'  [PlaceDie] Running front conveyor backward for '
-                  f'{FRONT_CONV_REVERSE_SECS}s...')
+            print('  [PlaceDie] Running conveyor 9.9 s...')
             self._run_conveyor('reverse')
-            time.sleep(FRONT_CONV_REVERSE_SECS)
+            time.sleep(9.9)
             self._run_conveyor('stop')
 
-            # Signal Beaker that die is on front conveyor and ready to grab
+            print('  [PlaceDie] Waiting 3 s then signalling Beaker ready...')
+            time.sleep(3.0)
             self._mb_write_coil(COIL_BUNSEN_READY, True)
-            self._mb_write(REG_PIP_PROGRESS, target + 1)  # next odd pip for Beaker
-            print(f'  [PlaceDie] Done. pip_progress → {target + 1}. '
-                  f'BUNSEN_READY=1 (Beaker may pick up).')
 
+            self._mb_write(REG_PIP_PROGRESS, target + 1)
+            print(f'  [PlaceDie] Done. pip_progress → {target + 1}.')
             self._set_state(STATE_WAIT)
 
         # ====================================================================
@@ -587,7 +617,8 @@ def _make_node():
 
         def run(self, step_mode: bool = False):
             self._step_mode = step_mode
-            self._state_setup()
+            if not step_mode:
+                self._state_setup()
 
             while True:
                 state = self._mb_read(REG_BUNSEN_STATE)
