@@ -299,6 +299,9 @@ class Phase1Test(Node):
         else:
             self.get_logger().warn('Camera service not found — using manual input.')
 
+        # ── 0. Ensure conveyor is stopped before anything moves ──────────────
+        self._send_conveyor('stop')
+
         # ── 1. Pick die ───────────────────────────────────────────────────────
         self.get_logger().info('Picking die...')
         self._send_gripper('open')
@@ -320,6 +323,11 @@ class Phase1Test(Node):
         self._send_joint(*CONV_REAR_JNT)
         self._send_gripper('open')
         self._send_cart(**CONV_REAR_ABV)
+
+        self.get_logger().info(f'Running rear belt for {RUN_SECONDS}s...')
+        self._send_conveyor('forward')
+        time.sleep(RUN_SECONDS)
+        self._send_conveyor('stop')
 
         self.get_logger().info('Done. Robot at CONV_REAR_ABV.')
 

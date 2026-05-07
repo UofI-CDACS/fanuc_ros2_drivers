@@ -277,165 +277,177 @@ class Robot1Controller(Node):
 
     def _find_pip_rotating(self, target: int, label: str) -> int:
         """
-        Two-view chirality approach:
-          VIEW 1 at CAMERA_POSE    → front face (camera or manual)
-          VIEW 2 at CAMERA_JOINT_2 → top face   (camera or manual)
-          Chirality table          → compute all 6 faces, locate target
-          Wrist rotation           → bring target face toward camera
-          Confirm                  → return target pip if correct, 0 otherwise.
-
-        Falls back to _scan_all_steps() if (top,front) is not a valid orientation.
-        Falls back to _find_pip_manual() if camera is unavailable.
+        Chirality loop — repeats one physical move at a time until target pip
+        is naturally on the front face. No wrist offsets used.
+          Front face  → done, return target.
+          Top face    → HOME → TOP_FACE_JNT → HOME → repick → retry.
+          Any other   → HOME → REORIENT release → HOME → repick → retry.
+        Falls back to _find_pip_manual() if camera unavailable.
         """
-        self.get_logger().info(f'Looking for pip={target} using chirality...')
-        self._send_cart(**CAMERA_POSE)
-        self._set_state(State.PIP_COUNT)
-
         if not self._camera_ok:
             return self._find_pip_manual(target)
 
-        # VIEW 1: front face
-        front_pip = self._capture_count_at(f'{label}_front')
-        self.get_logger().info(f'  VIEW 1 (front): {front_pip} pip(s)')
+        attempt = 0
+        while True:
+            attempt += 1
+            self.get_logger().info(f'pip={target} chirality attempt {attempt}')
+            self._set_state(State.PIP_COUNT)
 
-        # VIEW 2: top face
-        self._send_joint(*CAMERA_JOINT_2)
-        top_pip = self._capture_count_at(f'{label}_top')
-        self.get_logger().info(f'  VIEW 2 (top):   {top_pip} pip(s)')
-        self._send_cart(**CAMERA_POSE)
+            # VIEW 1: front face
+            self._send_cart(**CAMERA_POSE)
+            front_pip = self._capture_count_at(f'{label}_a{attempt}_front')
+            self.get_logger().info(f'  VIEW 1 (front): {front_pip}')
 
-        # Chirality lookup
-        right_pip = _DIE_RIGHT.get((top_pip, front_pip))
-        if right_pip is None:
-            self.get_logger().warn(
-                f'({top_pip},{front_pip}) not a valid die orientation — scanning all'
-            )
-            return self._scan_all_steps(target)
+            # VIEW 2: bottom face (CAMERA_JOINT_2 tilts so camera sees bottom)
+            self._send_joint(*CAMERA_JOINT_2)
+            bottom_pip = self._capture_count_at(f'{label}_a{attempt}_bottom')
+            top_pip = 7 - bottom_pip
+            self.get_logger().info(f'  VIEW 2 (bottom): {bottom_pip}  top: {top_pip}')
+            self._send_cart(**CAMERA_POSE)
 
-        back_pip   = 7 - front_pip
-        left_pip   = 7 - right_pip
-        face_map = {
-            'front': front_pip, 'right': right_pip,
-            'back':  back_pip,  'left':  left_pip,
-            'top':   top_pip,   'bottom': 7 - top_pip,
-        }
-        target_face = next((f for f, v in face_map.items() if v == target), None)
-        self.get_logger().info(f'  pip {target} is on the {target_face} face')
+            # Chirality lookup
+            right_pip = _DIE_RIGHT.get((top_pip, front_pip))
+            if right_pip is None:
+                self.get_logger().warn(f'({top_pip},{front_pip}) invalid — reorienting.')
+                self._set_state(State.RECOVER)
+                self._send_joint(*HOME_JOINTS)
+                self._send_cart(**PICK_ABOVE)
+                self._send_cart(**REORIENT_ABOVE)
+                self._send_cart(**REORIENT_DOWN)
+                self._send_gripper('open')
+                self._send_joint(*HOME_JOINTS)
+                self._send_cart(**PICK_ABOVE)
+                self._send_cart(**PICK_DOWN)
+                self._send_gripper('close')
+                self._send_cart(**PICK_ABOVE)
+                self.r1_retries += 1
+                continue
 
-        if target_face == 'bottom':
-            return 0   # caller will reorient and repick
+            back_pip = 7 - front_pip
+            left_pip = 7 - right_pip
+            face_map = {
+                'front': front_pip, 'right': right_pip,
+                'back':  back_pip,  'left':  left_pip,
+                'top':   top_pip,   'bottom': bottom_pip,
+            }
+            target_face = next((f for f, v in face_map.items() if v == target), None)
+            self.get_logger().info(f'  pip {target} on {target_face} face')
 
-        if target_face == 'top':
-            self.get_logger().info(f'  pip {target} on top — going home then flipping via TOP_FACE_JNT')
+            if target_face == 'front':
+                self._pub_pip.publish(Int32(data=target))
+                return target
+
+            if target_face == 'top':
+                self.get_logger().info(f'  TOP_FACE_JNT flip...')
+                self._set_state(State.ROTATE_PIP)
+                self._send_joint(*HOME_JOINTS)
+                self._send_joint(*TOP_FACE_JNT)
+                self._send_gripper('open')
+                self._send_joint(*HOME_JOINTS)
+                self._send_cart(**PICK_ABOVE)
+                self._send_cart(**PICK_DOWN)
+                self._send_gripper('close')
+                self._send_cart(**PICK_ABOVE)
+                self.r1_retries += 1
+                continue
+
+            # bottom / right / back / left → REORIENT
+            self.get_logger().info(f'  REORIENT (pip {target} on {target_face})...')
+            self._set_state(State.RECOVER)
             self._send_joint(*HOME_JOINTS)
-            self._send_joint(*TOP_FACE_JNT)
+            self._send_cart(**PICK_ABOVE)
+            self._send_cart(**REORIENT_ABOVE)
+            self._send_cart(**REORIENT_DOWN)
             self._send_gripper('open')
             self._send_joint(*HOME_JOINTS)
-            pips = self._capture_count_at(f'{label}_top_confirm')
-            self._pub_pip.publish(Int32(data=pips))
             self._send_cart(**PICK_ABOVE)
-            if pips == target:
-                return pips
-            self.get_logger().warn(f'  Expected {target} after top-face move but saw {pips} — returning 0')
-            return 0
-
-        # Rotate wrist to bring target face toward camera
-        r_offset = CAMERA_ROTATION_STEPS[_FACE_STEP[target_face]]
-        if r_offset != 0:
-            self._set_state(State.ROTATE_PIP)
-            self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
-
-        # Confirm
-        pips = self._capture_count_at(f'{label}_confirm')
-        self.get_logger().info(f'  Confirm at r={r_offset:+.0f}°: {pips} pip(s)')
-        self._pub_pip.publish(Int32(data=pips))
-
-        if pips == target:
-            return pips
-
-        self.get_logger().warn(f'  Chirality predicted {target} but saw {pips} — returning 0')
-        return 0
+            self._send_cart(**PICK_DOWN)
+            self._send_gripper('close')
+            self._send_cart(**PICK_ABOVE)
+            self.r1_retries += 1
+            continue
 
     def _find_pip_manual(self, target: int) -> int:
         """
-        Manual camera fallback — called when camera service is unavailable.
-
-        Robot is already at CAMERA_POSE (called from _find_pip_rotating).
-
-        Two-view chirality with manual prompts:
-          VIEW 1 → front face  |  VIEW 2 → top face
-          Chirality table → locate target face → rotate wrist → confirm.
-        Falls back to _scan_all_steps() if orientation is invalid.
-        Returns target pip if found, 0 otherwise.
+        Manual fallback (no camera) — same loop as _find_pip_rotating but
+        prompts the user for face values instead of capturing images.
         """
-        print(f'\n{"─" * 52}')
-        print(f'  Manual mode — looking for pip {target}')
-        print(f'{"─" * 52}')
+        attempt = 0
+        while True:
+            attempt += 1
+            print(f'\n{"─" * 52}')
+            print(f'  Manual pip={target} — attempt {attempt}')
+            print(f'{"─" * 52}')
 
-        # VIEW 1: front face
-        print('\n  VIEW 1 — die at camera position.')
-        front_pip = self._prompt_face('Front face (what you see facing the camera)')
+            # VIEW 1: front face
+            self._send_cart(**CAMERA_POSE)
+            print('\n  VIEW 1 — die at camera position.')
+            front_pip = self._prompt_face('Front face')
 
-        # VIEW 2: top face
-        print('  Moving to VIEW 2 (top face)...')
-        self._send_joint(*CAMERA_JOINT_2)
-        top_pip = self._prompt_face('Top face  (what you see now)              ')
-        self._send_cart(**CAMERA_POSE)
+            # VIEW 2: bottom face
+            self._send_joint(*CAMERA_JOINT_2)
+            print('\n  VIEW 2 — bottom face toward camera.')
+            bottom_pip = self._prompt_face('Bottom face')
+            top_pip = 7 - bottom_pip
+            self._send_cart(**CAMERA_POSE)
 
-        # Chirality lookup
-        right_pip = _DIE_RIGHT.get((top_pip, front_pip))
-        if right_pip is None:
-            print(f'\n  ! ({top_pip}, {front_pip}) not a valid die orientation.')
-            print('  Falling back to full 6-position scan...')
-            return self._scan_all_steps(target)
+            # Chirality lookup
+            right_pip = _DIE_RIGHT.get((top_pip, front_pip))
+            if right_pip is None:
+                print(f'  ! ({top_pip},{front_pip}) invalid — reorienting.')
+                self._send_joint(*HOME_JOINTS)
+                self._send_cart(**PICK_ABOVE)
+                self._send_cart(**REORIENT_ABOVE)
+                self._send_cart(**REORIENT_DOWN)
+                self._send_gripper('open')
+                self._send_joint(*HOME_JOINTS)
+                self._send_cart(**PICK_ABOVE)
+                self._send_cart(**PICK_DOWN)
+                self._send_gripper('close')
+                self._send_cart(**PICK_ABOVE)
+                self.r1_retries += 1
+                continue
 
-        back_pip = 7 - front_pip
-        left_pip = 7 - right_pip
-        print(f'\n  Die layout:  front={front_pip}  right={right_pip}  back={back_pip}'
-              f'  left={left_pip}  top={top_pip}  bottom={7 - top_pip}')
+            back_pip = 7 - front_pip
+            left_pip = 7 - right_pip
+            face_map = {
+                'front': front_pip, 'right': right_pip,
+                'back':  back_pip,  'left':  left_pip,
+                'top':   top_pip,   'bottom': bottom_pip,
+            }
+            target_face = next((f for f, v in face_map.items() if v == target), None)
+            print(f'  pip {target} on {target_face} face')
 
-        face_map = {
-            'front': front_pip, 'right': right_pip,
-            'back':  back_pip,  'left':  left_pip,
-            'top':   top_pip,   'bottom': 7 - top_pip,
-        }
-        target_face = next((f for f, v in face_map.items() if v == target), None)
-        print(f'  Pip {target} is on the {target_face} face.')
+            if target_face == 'front':
+                self._pub_pip.publish(Int32(data=target))
+                return target
 
-        if target_face == 'bottom':
-            print(f'  Cannot reach bottom by wrist rotation — re-orient needed.')
-            return 0
+            if target_face == 'top':
+                print('  TOP_FACE_JNT flip...')
+                self._send_joint(*HOME_JOINTS)
+                self._send_joint(*TOP_FACE_JNT)
+                self._send_gripper('open')
+                self._send_joint(*HOME_JOINTS)
+                self._send_cart(**PICK_ABOVE)
+                self._send_cart(**PICK_DOWN)
+                self._send_gripper('close')
+                self._send_cart(**PICK_ABOVE)
+                self.r1_retries += 1
+                continue
 
-        if target_face == 'top':
-            print(f'  Pip {target} on top — going home then flipping via TOP_FACE_JNT...')
+            print(f'  REORIENT (pip {target} on {target_face})...')
             self._send_joint(*HOME_JOINTS)
-            self._send_joint(*TOP_FACE_JNT)
+            self._send_cart(**PICK_ABOVE)
+            self._send_cart(**REORIENT_ABOVE)
+            self._send_cart(**REORIENT_DOWN)
             self._send_gripper('open')
             self._send_joint(*HOME_JOINTS)
-            pips = self._prompt_face(f'Confirm — pip you see now (expect {target})')
-            self._pub_pip.publish(Int32(data=pips))
             self._send_cart(**PICK_ABOVE)
-            if pips == target:
-                print(f'  >> Pip {target} confirmed after top-face joint move!\n')
-                return pips
-            print(f'  Saw {pips}, expected {target} — returning 0.\n')
-            return 0
-
-        # Rotate wrist to bring target face toward camera
-        r_offset = CAMERA_ROTATION_STEPS[_FACE_STEP[target_face]]
-        if r_offset != 0:
-            self._set_state(State.ROTATE_PIP)
-            self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
-
-        pips = self._prompt_face(f'Confirm — pip you see now (expect {target})')
-        self._pub_pip.publish(Int32(data=pips))
-
-        if pips == target:
-            print(f'  >> Pip {target} confirmed!\n')
-            return pips
-
-        print(f'  Saw {pips}, expected {target} — returning 0.\n')
-        return 0
+            self._send_cart(**PICK_DOWN)
+            self._send_gripper('close')
+            self._send_cart(**PICK_ABOVE)
+            self.r1_retries += 1
+            continue
 
     def _scan_all_steps(self, target: int) -> int:
         """Fallback: sweep all 6 wrist rotations looking for target pip."""
@@ -621,52 +633,25 @@ class Robot1Controller(Node):
             self._set_pip_progress(0)
             self._set_state(State.GRAB_DIE)
             self.pick_dice()
-
-            while True:
-                pips = self._find_pip_rotating(1, 'search')
-                self._pub_pip.publish(Int32(data=pips))
-
-                if pips == 1:
-                    self.get_logger().info('pip = 1 found — START STATE reached!')
-                    break
-
-                self.get_logger().info('pip = 1 not on any face — re-orienting die...')
-                self._set_state(State.RECOVER)
-                self.reorient_and_repick()
-                self.r1_retries += 1
+            self._find_pip_rotating(1, 'p1')
+            self.get_logger().info('pip = 1 found!')
 
             # ── Phase 2: sequential 1 → 6 ────────────────────────────────────
             self.get_logger().info('\n=== PHASE 2: Sequential 1 → 6 ===')
 
-            # Already holding pip=1 from Phase 1
-            holding_die = True
+            holding_die = True   # already holding pip=1 from Phase 1
 
             for target in range(1, 7):
-                round_retries = 0
                 self.get_logger().info(f'\n--- Target pip: {target} ---')
                 self._set_pip_progress(target)
 
-                while True:
-                    if not holding_die:
-                        self._set_state(State.GRAB_DIE)
-                        self.pick_dice()
-                    holding_die = False
+                if not holding_die:
+                    self._set_state(State.GRAB_DIE)
+                    self.pick_dice()
 
-                    pips = self._find_pip_rotating(target, f'seq_t{target}_r{round_retries}')
-                    self._pub_pip.publish(Int32(data=pips))
-
-                    if pips == target:
-                        self.get_logger().info(f'Correct pip ({pips}) — sending to Bunsen')
-                        break
-
-                    self.get_logger().info(f'pip={target} not on any face — re-orienting die...')
-                    self._set_state(State.RECOVER)
-                    self.reorient_and_repick()
-                    holding_die = True
-                    round_retries += 1
-                    self.r1_retries += 1
-
-                self._total_counts.append((target, pips, round_retries))
+                self._find_pip_rotating(target, f'seq_t{target}')
+                self.get_logger().info(f'pip={target} found — sending to Bunsen')
+                self._total_counts.append((target, target))
 
                 self._set_state(State.PLACE_DIE)
                 if not self.send_to_bunsen():
@@ -674,9 +659,8 @@ class Robot1Controller(Node):
                     break
 
                 if target == 6:
-                    break   # Bunsen places pip=6 — game over
+                    break
 
-                # Wait for Bunsen to verify and return the die
                 self._set_state(State.WAIT)
                 if not self.receive_from_bunsen():
                     self.get_logger().error('Failed to receive die back from Bunsen')
@@ -706,10 +690,10 @@ class Robot1Controller(Node):
         print(f'\n{sep}')
         print('         DICE GAME  —  RESULTS')
         print(sep)
-        print(f'  {"Target":>6}  {"Got":>4}  {"R1 Retries":>10}')
-        print(f'  {"-"*6}  {"-"*4}  {"-"*10}')
-        for target, pips, retries in self._total_counts:
-            print(f'  {target:>6}  {pips:>4}  {retries:>10}')
+        print(f'  {"Target":>6}  {"Got":>4}')
+        print(f'  {"-"*6}  {"-"*4}')
+        for target, pips in self._total_counts:
+            print(f'  {target:>6}  {pips:>4}')
         print(f'  {"-"*35}')
         print(f'  Beaker (R1) retries : {self.r1_retries}')
         print(f'  Bunsen (R2) retries : {bunsen_retries}')
