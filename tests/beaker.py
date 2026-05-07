@@ -80,15 +80,18 @@ def scoot(a, scoot, direction = 2):
         return copy
 
 async def test():
-    rclpy.init()
-    global robot, robot1
-    robot = FanucRosNode('beaker')
-    executor = rclpy.executors.SingleThreadedExecutor()
-    executor.add_node(robot)
-    asyncio.create_task(ros_robot.spin_robot(executor))
+    print("rest,grab,move to camera")
+
+    #Loop through all odd faces on die
+    for i in range(1,MAX_FACE,2):
+        print(f"finding face with pip {i}")
+        print("grab dice, put on rear conveyor")
+        print(f"dice {i} ready")
+        if i != (MAX_FACE-1):
+            print("wait for other robot")
+            print("grab cube from conveyor")
     
-    await grab_cube_conveyor()
-    await robot.move_joints(rest_joint)
+    print("move back to rest")
 
 async def grab_cube_conveyor():
     #Grab from conveyor sequence
@@ -120,7 +123,7 @@ async def wait_for_conveyor_sensor(side="right"):
         if sensor:
             await robot.move_conveyor('stop')
             break
-        await asyncio.sleep(0.05)
+        await asyncio.sleep(0.005)
 
 async def identify_find_dice_routine(pip=1):
     #move out of the way of the camera
