@@ -460,8 +460,8 @@ class Robot1Controller(Node):
         offset is gentler on the die and avoids needing a separate calibrated
         REORIENT position.
         """
-        self.get_logger().info('Re-orienting die — releasing at r=120° to change orientation...')
-        self._send_cart(**PICK_ABOVE)
+        self.get_logger().info('Re-orienting die — going home then releasing at r=120°...')
+        self._send_joint(*HOME_JOINTS)
         self._send_cart(**REORIENT_DOWN)
         self._send_gripper('open')
         self._send_cart(**PICK_ABOVE)
