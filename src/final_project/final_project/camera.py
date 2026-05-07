@@ -1,6 +1,31 @@
 import cv2
 import numpy as np
+import threading
 import mvsdk
+
+_INIT_TIMEOUT = 5.0  # seconds before giving up on CameraInit
+
+
+def _camera_init_with_timeout(DevInfo):
+    """Run CameraInit in a thread; return hCamera or raise on timeout/error."""
+    result = [None]
+    exc    = [None]
+
+    def _run():
+        try:
+            result[0] = mvsdk.CameraInit(DevInfo, -1, -1)
+        except Exception as e:
+            exc[0] = e
+
+    t = threading.Thread(target=_run, daemon=True)
+    t.start()
+    t.join(_INIT_TIMEOUT)
+    if t.is_alive():
+        raise TimeoutError(f'CameraInit timed out after {_INIT_TIMEOUT}s '
+                           f'(camera likely on wrong network)')
+    if exc[0] is not None:
+        raise exc[0]
+    return result[0]
 
 
 class Camera:
@@ -18,15 +43,21 @@ class Camera:
             DevInfo = None
             for dev in DevList:
                 try:
-                    cam_ip, _, _, _, _, _ = mvsdk.CameraGigeGetIp(dev)
-                    if cam_ip == camera_ip:
+                    found_ip, _, _, _, _, _ = mvsdk.CameraGigeGetIp(dev)
+                    if found_ip == camera_ip:
                         DevInfo = dev
                         break
                 except Exception:
                     pass
             if DevInfo is None:
-                print(f'No camera found with IP {camera_ip}')
-                return
+                # IP didn't match — fall back to first found device
+                try:
+                    actual_ip, _, _, _, _, _ = mvsdk.CameraGigeGetIp(DevList[0])
+                except Exception:
+                    actual_ip = '?'
+                print(f'Camera not found at {camera_ip}, '
+                      f'using first available device (IP={actual_ip})')
+                DevInfo = DevList[0]
         elif nDev == 1:
             DevInfo = DevList[0]
         else:
@@ -35,9 +66,11 @@ class Camera:
             i = int(input('Select camera: '))
             DevInfo = DevList[i]
 
-        hCamera = 0
         try:
-            hCamera = mvsdk.CameraInit(DevInfo, -1, -1)
+            hCamera = _camera_init_with_timeout(DevInfo)
+        except TimeoutError as e:
+            print(f'CameraInit timed out: {e}')
+            return
         except mvsdk.CameraException as e:
             print('CameraInit Failed({}): {}'.format(e.error_code, e.message))
             return
