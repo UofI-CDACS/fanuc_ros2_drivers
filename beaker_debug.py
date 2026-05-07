@@ -43,6 +43,7 @@ RUN_SECONDS = 9.9
 HOME_JOINTS   = (1.1, 1.5, -2.0, -1.7, -88.6, -30.0)
 PICK_ABOVE    = dict(x=470.0,    y=-15.0,   z=-18.0,   w=179.9, p=0.0,   r=30.0)
 PICK_DOWN     = dict(x=470.0,    y=-15.0,   z=-185.0,  w=179.9, p=0.0,   r=30.0)
+REORIENT_DOWN = dict(x=470.0,    y=-15.0,   z=-185.0,  w=179.9, p=0.0,   r=120.0)
 CAMERA_POSE   = dict(x=490.0,    y=890.0,   z=881.0,   w=73.0,  p=-66.0, r=-170.0)
 CONV_REAR_ABV  = dict(x=-194.112, y=617.369, z=200.840, w=179.9, p=0.0,   r=120.0)
 CONV_REAR_DRP  = dict(x=-194.112, y=617.369, z=8.840,   w=179.9, p=0.0,   r=120.0)
@@ -209,9 +210,9 @@ class BeakerDebug(Node):
         self._send_cart(**PICK_ABOVE)
 
     def _reorient(self):
-        """Release die at PICK_DOWN and immediately repick."""
+        """Release at r=120° so die lands in new orientation, repick at r=30°."""
         self._send_cart(**PICK_ABOVE)
-        self._send_cart(**PICK_DOWN)
+        self._send_cart(**REORIENT_DOWN)
         self._send_gripper('open')
         self._send_cart(**PICK_ABOVE)
         self._send_cart(**PICK_DOWN)
