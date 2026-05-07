@@ -1,4 +1,9 @@
 build/*
 install/*
 log/*
+.env
+lafleur_claude/OPERATIONS_LOG.md
+lafleur_claude/Camera/
+MVSDK/
+**/__pycache__/
 
