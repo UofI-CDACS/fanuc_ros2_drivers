@@ -35,6 +35,7 @@ from dice_game.pip_counter import count_pips, save_debug_image
 ROBOT_NAME  = 'Beaker'
 RUN_SECONDS = 9.9
 
+HOME_JOINTS   = (1.1, 1.5, -2.0, -1.7, -88.6, -30.0)
 PICK_ABOVE    = dict(x=470.0,    y=-15.0,   z=-18.0,   w=179.9, p=0.0,   r=30.0)
 PICK_DOWN     = dict(x=470.0,    y=-15.0,   z=-185.0,  w=179.9, p=0.0,   r=30.0)
 REORIENT_DOWN = dict(x=470.0,    y=-15.0,   z=-185.0,  w=179.9, p=0.0,   r=120.0)
