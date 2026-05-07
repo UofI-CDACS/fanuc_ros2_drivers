@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import os
+import asyncio
 import rclpy
 
 
@@ -59,6 +60,9 @@ class schunk_gripper_server(Node):
     async def execute_callback(self, goal_handle):
         # WIP: Add Try/Except to catch possible error
         self.bot.schunk_gripper(self.goal.command)
+
+        # Wait for gripper to actuate before returning result
+        await asyncio.sleep(2.0)
 
         goal_handle.succeed()
         result = SchunkGripper.Result()

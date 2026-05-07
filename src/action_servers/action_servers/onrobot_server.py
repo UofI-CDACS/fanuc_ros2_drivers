@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import os
+import asyncio
 import rclpy
 
 import dependencies.FANUCethernetipDriver as FANUCethernetipDriver
@@ -61,7 +62,12 @@ class onrobot_gripper_server(Node):
     async def execute_callback(self, goal_handle):
         # WIP: Add Try/Except to catch possible error
         self.bot.onRobot_gripper(self.goal.width, self.goal.force)
-        
+
+        # Wait for gripper to reach target position.
+        # The OnRobot gripper has no hardware-feedback register to poll,
+        # so we gate on time before returning the result.
+        await asyncio.sleep(2.0)
+
         goal_handle.succeed()
         result = OnRobotGripper.Result()
         result.success = True

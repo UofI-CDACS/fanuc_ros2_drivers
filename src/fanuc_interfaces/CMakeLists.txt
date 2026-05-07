@@ -42,11 +42,14 @@ set(msg_files
    "msg/IsMoving.msg"
    "msg/CurSpeed.msg"
    "msg/ProxReadings.msg"
+   "msg/DiceState.msg"
 )
 
 set(srv_files
    "srv/Mount.srv"
    "srv/SetSpeed.srv"
+   "srv/RequestHandoff.srv"
+   "srv/CapturePip.srv"
 )
 
 rosidl_generate_interfaces(${PROJECT_NAME}

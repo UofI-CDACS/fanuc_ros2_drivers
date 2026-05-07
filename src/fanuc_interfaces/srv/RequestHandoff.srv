@@ -1,0 +1,6 @@
+# Sender calls this on the receiver before running its conveyor.
+# Receiver moves to pickup position, then responds.
+
+string conveyor     # 'front' or 'back'
+---
+bool accepted

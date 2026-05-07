@@ -1,5 +1,5 @@
 #Goal
-# Set the robot to a series of joint angles Should be in the range of [-179.0, 179.0]
+# Set the robot to a series of joint angles Should be in the range of [-270.0, 270.0]
 
 # Joint angles
 float32 joint1
@@ -8,6 +8,8 @@ float32 joint3
 float32 joint4
 float32 joint5
 float32 joint6
+# Speed in mm/s [1, 300]. 0 = use current speed (no change).
+int32 speed
 ---
 #Result
 bool success

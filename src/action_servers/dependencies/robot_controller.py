@@ -20,6 +20,7 @@
 
 # Imports
 import math
+import time
 import typing
 from . import FANUCethernetipDriver
 
@@ -251,6 +252,7 @@ class robot:
         """! checks to see if robot is moving based on the value of the sync register 1=moving 0=not moving
         """
         pose1 = self.read_current_cartesian_pose()
+        time.sleep(0.1)   # allow enough time between samples to detect motion
         pose2 = self.read_current_cartesian_pose()
         diff = list(map(lambda a, b: a - b, pose1, pose2))
         #print("Difference: ", diff)

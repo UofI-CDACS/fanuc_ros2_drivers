@@ -1,0 +1,7 @@
+# Request a camera capture and pip count.
+# Returns -1 on failure.
+
+---
+int32 pip_count
+bool success
+string message

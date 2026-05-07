@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import os
+import time
 import rclpy
 
 import dependencies.FANUCethernetipDriver as FANUCethernetipDriver
@@ -27,6 +28,7 @@ class joint_pose_server(Node):
 
         self.goal = JointPose.Goal()
         self.bot = robot(self.get_parameter('robot_ip').value)
+        self.bot.set_speed(300)  # reset to full speed on startup
 
         self._action_server = ActionServer(self, JointPose, f"{self.get_parameter('robot_name').value}/joint_pose", 
                                         execute_callback = self.execute_callback, 
@@ -38,27 +40,27 @@ class joint_pose_server(Node):
         self.goal = goal_request 
         # FIX!! This is ugly.. Put into a list.any()? Switch is also faster
         # Check that it recieved a valid goal
-        if self.goal.joint1 > 179.9 or self.goal.joint1 < -179.9:
+        if self.goal.joint1 > 270.0 or self.goal.joint1 < -270.0:
             self.get_logger().info('Invalid request')
             return GoalResponse.REJECT
         
-        elif self.goal.joint2 > 179.9 or self.goal.joint2 < -179.9:
+        elif self.goal.joint2 > 270.0 or self.goal.joint2 < -270.0:
             self.get_logger().info('Invalid request')
             return GoalResponse.REJECT
         
-        elif self.goal.joint3 > 179.9 or self.goal.joint3 < -179.9:
+        elif self.goal.joint3 > 270.0 or self.goal.joint3 < -270.0:
             self.get_logger().info('Invalid request')
             return GoalResponse.REJECT
         
-        elif self.goal.joint4 > 179.9 or self.goal.joint4 < -179.9:
+        elif self.goal.joint4 > 270.0 or self.goal.joint4 < -270.0:
             self.get_logger().info('Invalid request')
             return GoalResponse.REJECT
         
-        elif self.goal.joint5 > 179.9 or self.goal.joint5 < -179.9:
+        elif self.goal.joint5 > 270.0 or self.goal.joint5 < -270.0:
             self.get_logger().info('Invalid request')
             return GoalResponse.REJECT
         
-        elif self.goal.joint6 > 179.9 or self.goal.joint6 < -179.9:
+        elif self.goal.joint6 > 270.0 or self.goal.joint6 < -270.0:
             self.get_logger().info('Invalid request')
             return GoalResponse.REJECT
         else:
@@ -83,11 +85,20 @@ class joint_pose_server(Node):
             list = [self.goal.joint1,
                     self.goal.joint2,
                     self.goal.joint3,
-                    self.goal.joint4, 
+                    self.goal.joint4,
                     self.goal.joint5,
                     self.goal.joint6]
-            
+
+            if self.goal.speed > 0:
+                self.bot.set_speed(min(self.goal.speed, 300))
+            else:
+                self.bot.set_speed(300)
+
             self.bot.write_joint_pose(list, blocking=False)
+
+            # Give the robot controller time to set the moving flag before polling.
+            # Without this, is_moving() can return False before motion starts.
+            time.sleep(0.3)
 
             while self.bot.is_moving():
                 # Calculate distance left
@@ -100,6 +111,20 @@ class joint_pose_server(Node):
                 goal_handle.publish_feedback(feedback_msg) # Send value
 
                 feedback_msg.distance_left = self.bot.read_current_joint_position() # Update cur pos
+
+            # Verify robot has reached target before returning result.
+            # is_moving() can return False before the robot settles, so poll
+            # joint positions until all joints are within tolerance.
+            TOLERANCE_DEG = 2.0
+            deadline = time.time() + 30.0
+            while True:
+                current = self.bot.read_current_joint_position()
+                if all(abs(current[i] - list[i]) < TOLERANCE_DEG for i in range(6)):
+                    break
+                if time.time() > deadline:
+                    self.get_logger().warn('Position verification timed out — proceeding anyway')
+                    break
+                time.sleep(0.1)
 
             goal_handle.succeed()
             result = JointPose.Result()
