@@ -429,6 +429,7 @@ def _make_node():
                 if face1 == target:
                     print(f'  [PipCount] Target pip {target} confirmed at position 1!')
                     self._mb_write(REG_PIP_PROGRESS, target)
+                    self._send_joint(**CONVEYOR_WAIT_POSE)
                     self._set_state(STATE_FINISH if target == 6 else STATE_PLACE_DIE)
                     return
 
@@ -441,6 +442,7 @@ def _make_node():
                 if face2 == target:
                     print(f'  [PipCount] Target pip {target} confirmed at position 2!')
                     self._mb_write(REG_PIP_PROGRESS, target)
+                    self._send_joint(**CONVEYOR_WAIT_POSE)
                     self._set_state(STATE_FINISH if target == 6 else STATE_PLACE_DIE)
                     return
 
