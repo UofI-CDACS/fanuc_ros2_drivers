@@ -330,6 +330,7 @@ class Robot1Controller(Node):
             self._send_joint(*TOP_FACE_JNT)
             pips = self._capture_count_at(f'{label}_top_confirm')
             self._pub_pip.publish(Int32(data=pips))
+            self._send_cart(**PICK_ABOVE)
             if pips == target:
                 return pips
             self.get_logger().warn(f'  Expected {target} after top-face move but saw {pips} — returning 0')
@@ -407,6 +408,7 @@ class Robot1Controller(Node):
             self._send_joint(*TOP_FACE_JNT)
             pips = self._prompt_face(f'Confirm — pip you see now (expect {target})')
             self._pub_pip.publish(Int32(data=pips))
+            self._send_cart(**PICK_ABOVE)
             if pips == target:
                 print(f'  >> Pip {target} confirmed after top-face joint move!\n')
                 return pips

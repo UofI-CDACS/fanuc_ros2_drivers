@@ -237,6 +237,7 @@ class Phase1Test(Node):
             print('  Pip 1 is on top face — rotating via TOP_FACE_JNT...')
             self._send_joint(*TOP_FACE_JNT)
             pips = self._get_face('confirm_top')
+            self._send_cart(**PICK_ABOVE)
             if pips == 1:
                 print('  >> Pip 1 confirmed after top-face joint move!\n')
                 return True
