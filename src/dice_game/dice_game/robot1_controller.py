@@ -463,6 +463,7 @@ class Robot1Controller(Node):
         """
         self.get_logger().info('Re-orienting die — going home then releasing at r=120°...')
         self._send_joint(*HOME_JOINTS)
+        self._send_cart(**PICK_ABOVE)
         self._send_cart(**REORIENT_ABOVE)
         self._send_cart(**REORIENT_DOWN)
         self._send_gripper('open')

@@ -213,6 +213,7 @@ class BeakerDebug(Node):
     def _reorient(self):
         """Go home, release at r=120° so die lands in new orientation, repick at r=30°."""
         self._send_joint(*HOME_JOINTS)
+        self._send_cart(**PICK_ABOVE)
         self._send_cart(**REORIENT_ABOVE)
         self._send_cart(**REORIENT_DOWN)
         self._send_gripper('open')
