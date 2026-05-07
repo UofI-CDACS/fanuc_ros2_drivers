@@ -235,7 +235,8 @@ class Phase1Test(Node):
             return False
 
         if target_face == 'top':
-            print('  Pip 1 is on top face — rotating via TOP_FACE_JNT...')
+            print('  Pip 1 is on top face — going home then flipping via TOP_FACE_JNT...')
+            self._send_joint(*HOME_JOINTS)
             self._send_joint(*TOP_FACE_JNT)
             self._send_gripper('open')
             self._send_cart(**CONV_REAR_ABV)

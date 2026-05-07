@@ -326,7 +326,8 @@ class Robot1Controller(Node):
             return 0   # caller will reorient and repick
 
         if target_face == 'top':
-            self.get_logger().info(f'  pip {target} on top — rotating via TOP_FACE_JNT')
+            self.get_logger().info(f'  pip {target} on top — going home then flipping via TOP_FACE_JNT')
+            self._send_joint(*HOME_JOINTS)
             self._send_joint(*TOP_FACE_JNT)
             self._send_gripper('open')
             pips = self._capture_count_at(f'{label}_top_confirm')
@@ -405,7 +406,8 @@ class Robot1Controller(Node):
             return 0
 
         if target_face == 'top':
-            print(f'  Pip {target} on top — rotating via TOP_FACE_JNT...')
+            print(f'  Pip {target} on top — going home then flipping via TOP_FACE_JNT...')
+            self._send_joint(*HOME_JOINTS)
             self._send_joint(*TOP_FACE_JNT)
             self._send_gripper('open')
             pips = self._prompt_face(f'Confirm — pip you see now (expect {target})')

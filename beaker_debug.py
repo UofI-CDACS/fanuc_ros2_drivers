@@ -275,7 +275,8 @@ class BeakerDebug(Node):
             return False
 
         if target_face == 'top':
-            print(f'  Pip {target} on top — rotating via TOP_FACE_JNT...')
+            print(f'  Pip {target} on top — going home then flipping via TOP_FACE_JNT...')
+            self._send_joint(*HOME_JOINTS)
             self._send_joint(*TOP_FACE_JNT)
             self._send_gripper('open')
             pips = self._get_face(f'confirm_top')
