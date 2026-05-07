@@ -279,6 +279,7 @@ class BeakerDebug(Node):
             self._send_joint(*HOME_JOINTS)
             self._send_joint(*TOP_FACE_JNT)
             self._send_gripper('open')
+            self._send_joint(*HOME_JOINTS)
             pips = self._get_face(f'confirm_top')
             self._send_cart(**PICK_ABOVE)
             if pips == target:

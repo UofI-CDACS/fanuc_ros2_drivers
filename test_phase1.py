@@ -239,6 +239,7 @@ class Phase1Test(Node):
             self._send_joint(*HOME_JOINTS)
             self._send_joint(*TOP_FACE_JNT)
             self._send_gripper('open')
+            self._send_joint(*HOME_JOINTS)
             self._send_cart(**CONV_REAR_ABV)
             self.get_logger().info(f'Running rear belt for {RUN_SECONDS}s...')
             self._send_conveyor('forward')
