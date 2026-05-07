@@ -179,44 +179,58 @@ class Phase1Test(Node):
 
     def find_pip1(self) -> bool:
         """
-        Chirality loop — handles all orientations internally.
-          Top face    → TOP_FACE_JNT flip + repick → retry
-          Bottom face → REORIENT release + repick  → retry
-          Front/side  → wrist rotate → return True (trust chirality)
-        Loops until pip 1 reaches a camera-facing position.
+        Chirality loop — repeats one physical move at a time until pip 1
+        naturally lands on the front face. No wrist offsets used.
+
+        Each iteration:
+          1. Take VIEW 1 + VIEW 2 to know the full die layout via chirality.
+          2a. Front face  → done, return True.
+          2b. Top face    → HOME → TOP_FACE_JNT → HOME → repick → loop again.
+          2c. Any other   → HOME → REORIENT release → HOME → repick → loop again.
+
+        Goes home before every move to guarantee IK reachability.
         """
+        attempt = 0
         while True:
+            attempt += 1
             print(f'\n{"=" * 54}')
-            print('  Finding pip 1 — chirality approach')
+            print(f'  Finding pip 1 — attempt {attempt}')
             print(f'{"=" * 54}')
 
             # ── VIEW 1: front face ────────────────────────────────────────────
-            self.get_logger().info('Moving to camera position (VIEW 1 — front face)...')
             self._send_cart(**CAMERA_POSE)
             print('\n  VIEW 1 — die at camera position.')
             front_pip = self._get_face('front')
             print(f'  Front face: {front_pip}')
 
             # ── VIEW 2: bottom face (CAMERA_JOINT_2 tilts so camera sees bottom)
-            self.get_logger().info('Moving to VIEW 2 (bottom face)...')
             self._send_joint(*CAMERA_JOINT_2)
-            print('\n  VIEW 2 — J5 tilted, bottom face toward camera.')
+            print('\n  VIEW 2 — bottom face toward camera.')
             bottom_pip = self._get_face('bottom')
-            top_pip = 7 - bottom_pip   # derive top from bottom
-            print(f'  Bottom face: {bottom_pip}  →  Top face: {top_pip}')
+            top_pip = 7 - bottom_pip
+            print(f'  Bottom: {bottom_pip}  Top: {top_pip}')
             self._send_cart(**CAMERA_POSE)
 
             # ── Chirality lookup ──────────────────────────────────────────────
             right_pip = _DIE_RIGHT.get((top_pip, front_pip))
             if right_pip is None:
-                print(f'\n  ! ({top_pip}, {front_pip}) not a valid die orientation.')
-                print('  Falling back to full 6-position scan...')
-                return self._scan_for_pip1()
+                print(f'  ! ({top_pip},{front_pip}) invalid — reorienting and retrying.')
+                self._send_joint(*HOME_JOINTS)
+                self._send_cart(**PICK_ABOVE)
+                self._send_cart(**REORIENT_ABOVE)
+                self._send_cart(**REORIENT_DOWN)
+                self._send_gripper('open')
+                self._send_joint(*HOME_JOINTS)
+                self._send_cart(**PICK_ABOVE)
+                self._send_cart(**PICK_DOWN)
+                self._send_gripper('close')
+                self._send_cart(**PICK_ABOVE)
+                continue
 
             back_pip = 7 - front_pip
             left_pip = 7 - right_pip
-            print(f'\n  Die layout:  front={front_pip}  right={right_pip}  back={back_pip}'
-                  f'  left={left_pip}  top={top_pip}  bottom={bottom_pip}')
+            print(f'  Layout: front={front_pip} right={right_pip} back={back_pip}'
+                  f' left={left_pip} top={top_pip} bottom={bottom_pip}')
 
             face_map = {
                 'front': front_pip, 'right': right_pip,
@@ -226,21 +240,14 @@ class Phase1Test(Node):
             target_face = next((f for f, v in face_map.items() if v == 1), None)
             print(f'  Pip 1 is on the {target_face} face.')
 
-            if target_face == 'bottom':
-                print('  Pip 1 on bottom — releasing at r=120° then repicking...')
-                self._send_joint(*HOME_JOINTS)
-                self._send_cart(**PICK_ABOVE)
-                self._send_cart(**REORIENT_ABOVE)
-                self._send_cart(**REORIENT_DOWN)
-                self._send_gripper('open')
-                self._send_cart(**PICK_ABOVE)
-                self._send_cart(**PICK_DOWN)
-                self._send_gripper('close')
-                self._send_cart(**PICK_ABOVE)
-                continue  # re-run chirality
+            # ── Front: done ───────────────────────────────────────────────────
+            if target_face == 'front':
+                print('  >> Pip 1 on front face — ready for drop.\n')
+                return True
 
+            # ── Top: flip via TOP_FACE_JNT ────────────────────────────────────
             if target_face == 'top':
-                print('  Pip 1 on top — flipping via TOP_FACE_JNT then repicking...')
+                print('  Pip 1 on top → HOME → TOP_FACE_JNT → HOME → repick...')
                 self._send_joint(*HOME_JOINTS)
                 self._send_joint(*TOP_FACE_JNT)
                 self._send_gripper('open')
@@ -249,15 +256,21 @@ class Phase1Test(Node):
                 self._send_cart(**PICK_DOWN)
                 self._send_gripper('close')
                 self._send_cart(**PICK_ABOVE)
-                continue  # re-run chirality
+                continue   # re-check after flip
 
-            # ── Front/side face — rotate wrist, trust chirality ───────────────
-            r_offset = CAMERA_ROTATION_STEPS[_FACE_STEP[target_face]]
-            if r_offset != 0:
-                self._send_cart(**{**CAMERA_POSE, 'r': CAMERA_POSE['r'] + r_offset})
-
-            print(f'  >> Pip 1 positioned (chirality). r_offset={r_offset:+.0f}°\n')
-            return True
+            # ── Bottom / right / back / left: REORIENT release ────────────────
+            print(f'  Pip 1 on {target_face} → HOME → REORIENT → HOME → repick...')
+            self._send_joint(*HOME_JOINTS)
+            self._send_cart(**PICK_ABOVE)
+            self._send_cart(**REORIENT_ABOVE)
+            self._send_cart(**REORIENT_DOWN)
+            self._send_gripper('open')
+            self._send_joint(*HOME_JOINTS)
+            self._send_cart(**PICK_ABOVE)
+            self._send_cart(**PICK_DOWN)
+            self._send_gripper('close')
+            self._send_cart(**PICK_ABOVE)
+            continue   # re-check after reorient
 
     def _scan_for_pip1(self) -> bool:
         """Fallback: step through all 6 wrist rotations looking for pip 1."""
@@ -317,8 +330,7 @@ def main():
     try:
         node.run()
     except KeyboardInterrupt:
-        node.get_logger().info('Interrupted — stopping conveyor.')
-        node._send_conveyor('stop')
+        node.get_logger().info('Interrupted.')
     finally:
         node.destroy_node()
         rclpy.shutdown()
