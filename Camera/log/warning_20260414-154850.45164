@@ -1,0 +1,7 @@
+Log file created at: 2026/04/14 15:48:50
+Running on machine: mbhabescomputer
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+W0414 15:48:50.238034 45212 CameraGigeBase.cpp:3918] Device:(name:HT-GE134GC-T1P-C sn:053092620044 cam:192.168.0.20-1000-1400 nic:-10.8.4.17-Unknown-0)Heart Fail:1
+W0414 15:48:50.249369 45212 CameraGigeBase.cpp:3918] Device:(name:HT-GE134GC-T1P-C sn:053092620044 cam:192.168.0.20-1000-1400 nic:-10.8.4.17-Unknown-0)Heart Fail:2
+W0414 15:48:51.248256 45212 CameraGigeBase.cpp:3918] Device:(name:HT-GE134GC-T1P-C sn:053092620044 cam:192.168.0.20-1000-1400 nic:-10.8.4.17-Unknown-0)Heart Fail:3
+W0414 15:48:52.248436 45212 CameraGigeBase.cpp:3918] Device:(name:HT-GE134GC-T1P-C sn:053092620044 cam:192.168.0.20-1000-1400 nic:-10.8.4.17-Unknown-0)Heart Fail:4

@@ -57,4 +57,17 @@ def generate_launch_description():
                 'robot_ip': ip,
             }.items()
         ),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([
+                PathJoinSubstitution([
+                    FindPackageShare('final_assignment'),
+                    'launch',
+                    'final_assignment.launch.py'
+                ])
+            ]),
+            launch_arguments={
+                'robot_name': name,
+                'robot_ip': ip,
+            }.items()
+        ),
     ])

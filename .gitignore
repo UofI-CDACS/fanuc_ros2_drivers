@@ -2,3 +2,11 @@ build/*
 install/*
 log/*
 
+# Local environment / secrets — paths and IPs vary per machine.
+.env
+.env.local
+
+# Python build / cache artefacts
+__pycache__/
+*.py[cod]
+*.egg-info/

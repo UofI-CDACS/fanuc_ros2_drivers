@@ -1,0 +1,16 @@
+Log file created at: 2026/05/06 20:48:15
+Running on machine: mbhabescomputer
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+W0506 20:48:15.407164 43049 CameraGigeBase.cpp:3918] Device:(name:HT-GE134GC-T1P-C sn:053092620044 cam:192.168.0.20-1000-1400 nic:enp0s31f6-192.168.0.100-Unknown-1500)Heart Fail:1
+W0506 20:48:17.734129 43049 CameraGigeBase.cpp:3918] Device:(name:HT-GE134GC-T1P-C sn:053092620044 cam:192.168.0.20-1000-1400 nic:enp0s31f6-192.168.0.100-Unknown-1500)Heart Fail:2
+W0506 20:48:19.431146 43049 CameraGigeBase.cpp:3918] Device:(name:HT-GE134GC-T1P-C sn:053092620044 cam:192.168.0.20-1000-1400 nic:-192.168.0.100-Unknown-0)Heart Fail:3
+W0506 20:48:19.441937 43049 CameraGigeBase.cpp:3918] Device:(name:HT-GE134GC-T1P-C sn:053092620044 cam:192.168.0.20-1000-1400 nic:-192.168.0.100-Unknown-0)Heart Fail:4
+W0506 20:48:20.441888 43049 CameraGigeBase.cpp:3918] Device:(name:HT-GE134GC-T1P-C sn:053092620044 cam:192.168.0.20-1000-1400 nic:-192.168.0.100-Unknown-0)Heart Fail:5
+W0506 20:48:21.442706 43049 CameraGigeBase.cpp:3918] Device:(name:HT-GE134GC-T1P-C sn:053092620044 cam:192.168.0.20-1000-1400 nic:-192.168.0.100-Unknown-0)Heart Fail:6
+W0506 20:48:22.447345 43049 CameraGigeBase.cpp:3918] Device:(name:HT-GE134GC-T1P-C sn:053092620044 cam:192.168.0.20-1000-1400 nic:-192.168.0.100-Unknown-0)Heart Fail:7
+W0506 20:48:23.452899 43049 CameraGigeBase.cpp:3918] Device:(name:HT-GE134GC-T1P-C sn:053092620044 cam:192.168.0.20-1000-1400 nic:-192.168.0.100-Unknown-0)Heart Fail:8
+W0506 20:48:24.453661 43049 CameraGigeBase.cpp:3918] Device:(name:HT-GE134GC-T1P-C sn:053092620044 cam:192.168.0.20-1000-1400 nic:-192.168.0.100-Unknown-0)Heart Fail:9
+W0506 20:48:25.458971 43049 CameraGigeBase.cpp:3918] Device:(name:HT-GE134GC-T1P-C sn:053092620044 cam:192.168.0.20-1000-1400 nic:-192.168.0.100-Unknown-0)Heart Fail:10
+W0506 20:48:26.467898 43049 CameraGigeBase.cpp:3918] Device:(name:HT-GE134GC-T1P-C sn:053092620044 cam:192.168.0.20-1000-1400 nic:-192.168.0.100-Unknown-0)Heart Fail:11
+W0506 20:48:27.478677 43049 CameraGigeBase.cpp:3918] Device:(name:HT-GE134GC-T1P-C sn:053092620044 cam:192.168.0.20-1000-1400 nic:-192.168.0.100-Unknown-0)Heart Fail:12
+W0506 20:48:27.479144 43049 CameraGigeBase.cpp:3923] Device:(name:HT-GE134GC-T1P-C sn:053092620044 cam:192.168.0.20-1000-1400 nic:-192.168.0.100-Unknown-0)CommIsFailed!!!

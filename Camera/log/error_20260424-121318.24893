@@ -1,0 +1,4 @@
+Log file created at: 2026/04/24 12:13:18
+Running on machine: mbhabescomputer
+Log line format: [IWEF]mmdd hh:mm:ss.uuuuuu threadid file:line] msg
+E0424 12:13:18.914543 24893 MVCAMAPI.cpp:350] CameraInit Failed, err:32774,Version:2.1.0.37,FriendlyName:HT-GE134GC-T1P-C,SN:053092620044
