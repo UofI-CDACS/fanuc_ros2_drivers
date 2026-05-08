@@ -2,3 +2,19 @@ build/*
 install/*
 log/*
 
+# Python
+__pycache__/
+*.pyc
+
+# Environment / secrets
+.env
+
+# Claude Code session files
+.claude/
+interaction_log.md
+
+# Camera logs and captured images
+dice/Camera/log/
+dice/capture_*.jpg
+dice/Camera/Data/
+
