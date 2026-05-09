@@ -1,0 +1,11 @@
+#Goal
+# For opening and closing the OnRobot gripper. 
+
+int32 width # Jaw distance in the range [0, 160]
+int32 force # Newtons in the range [0, 120]
+---
+#Result
+
+bool success
+---
+#Feedback

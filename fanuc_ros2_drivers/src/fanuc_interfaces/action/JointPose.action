@@ -1,0 +1,16 @@
+#Goal
+# Set the robot to a series of joint angles Should be in the range of [-179.0, 179.0]
+
+# Joint angles
+float32 joint1
+float32 joint2
+float32 joint3
+float32 joint4
+float32 joint5
+float32 joint6
+---
+#Result
+bool success
+---
+#Feedback
+float32[] distance_left

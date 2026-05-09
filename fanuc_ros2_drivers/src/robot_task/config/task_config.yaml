@@ -1,0 +1,182 @@
+# ============================================================
+# Robot Task — Configuration
+# ============================================================
+# Two-robot alternating pip sequence:
+#   Robot 1 (partner / bunsen): finds pips 1 → 3 → 5
+#     - picks initial dice from dice_pose, drops on ODD conveyor
+#     - picks up from EVEN conveyor between cycles
+#   Robot 2 (this robot / beaker): finds pips 2 → 4 → 6
+#     - picks from ODD conveyor, drops on EVEN conveyor
+#     - places pip 6 at dice_pose (rotation surface)
+#
+# Two physical conveyor belts:
+#   Odd  conveyor: R1 drops → R2 picks up
+#   Even conveyor: R2 drops → R1 picks up
+#
+# Launch:
+#   ros2 launch robot_task task.launch.py robot_index:=1
+#   ros2 launch robot_task task.launch.py robot_index:=2
+#
+# ROBOT_NAME and ROBOT_IP come from the workspace .env file (not here).
+# The node name (robot1_task_node / robot2_task_node) must match the
+# section key below so ROS2 loads the correct parameter set.
+# ============================================================
+
+# ── Robot 1 (bunsen) ──────────────────────────────────────────────────────────
+robot1_task_node:
+  ros__parameters:
+
+    # ── Robot identity ───────────────────────────────────────
+    robot_name: bunsen
+    robot_index: 1
+
+    # ── Conveyor namespaces ──────────────────────────────────
+    drop_conveyor_ns:   beaker  # R1 drops on beaker's belt (sends dice to R2)
+    pickup_conveyor_ns: bunsen  # R1 picks up from bunsen's belt (R2 sends dice back)
+    drop_conveyor_cmd:  reverse
+
+    # ── Proximity sensor ─────────────────────────────────────
+    prox_sensor_side: right     # ← CALIBRATE: whichever side detects the even belt
+
+    # ── Task behaviour ───────────────────────────────────────
+    max_retries: 6
+    approach_height_offset: 100.0
+    camera_settle_time: 1.0
+    capture_timeout: 10.0
+    camera_poll_interval: 0.5
+    camera_claim_delay: 0.1
+    gripper_settle_time: 2.0
+    sensor_poll_interval: 0.2
+
+    # ── Modbus server ────────────────────────────────────────
+    modbus_host: localhost
+    modbus_port: 1502
+
+    # ── Dice pose (cycle 0 initial pickup) ───────────────────
+    # Matches PICK_POSE from rotations.py — the table surface where
+    # the die starts at the beginning of the sequence.
+    dice_x:  447.854
+    dice_y:   -6.335
+    dice_z: -122.356
+    dice_w:  179.605
+    dice_p:    1.089
+    dice_r:    1.409
+
+    # ── Camera inspection pose ───────────────────────────────
+    # Matches CAMERA_POSE from rotations.py.
+    camera_x:  497.894
+    camera_y: -938.334
+    camera_z:  928.0
+    camera_w:  149.150
+    camera_p:   89.3
+    camera_r:   58.349
+
+    # ── Conveyor pickup pose (end of the EVEN belt) ──────────
+    conveyor_pickup_x:  144.543   # ← CALIBRATE
+    conveyor_pickup_y:  -673.358   # ← CALIBRATE
+    conveyor_pickup_z:  63.834   # ← CALIBRATE
+    conveyor_pickup_w:  179.609
+    conveyor_pickup_p:  0.085
+    conveyor_pickup_r:  91.031
+
+    # ── Conveyor drop pose (end of the ODD belt) ─────────────
+    conveyor_drop_x:  -204.577     # ← CALIBRATE
+    conveyor_drop_y:  -607.278     # ← CALIBRATE
+    conveyor_drop_z:  65.755     # ← CALIBRATE
+    conveyor_drop_w:  179.608
+    conveyor_drop_p:    0.085
+    conveyor_drop_r:    91.031
+
+    # ── Gripper (OnRobot, mm / N) ────────────────────────────
+    gripper_open_width:  120.0
+    gripper_close_width:  70.0  # ← CALIBRATE: GRIPPER_CLOSE_MM from rotations.py
+    gripper_force:        40.0  # ← CALIBRATE: GRIPPER_FORCE_N from rotations.py
+
+    # ── Home joint pose (deg) ────────────────────────────────
+    home_j1:   0.0
+    home_j2:   0.0
+    home_j3:   0.0
+    home_j4:   0.0
+    home_j5: -90.0
+    home_j6:   0.0
+
+
+# ── Robot 2 (beaker) ──────────────────────────────────────────────────────────
+robot2_task_node:
+  ros__parameters:
+
+    # ── Robot identity ───────────────────────────────────────
+    robot_name: beaker
+    robot_index: 2
+
+    # ── Conveyor namespaces ──────────────────────────────────
+    drop_conveyor_ns:   bunsen  # R2 drops on bunsen's belt (sends dice to R1)
+    pickup_conveyor_ns: beaker  # R2 picks up from beaker's belt (R1 sends dice on it)
+    drop_conveyor_cmd:  forward
+
+    # ── Proximity sensor ─────────────────────────────────────
+    prox_sensor_side: left
+
+    # ── Task behaviour ───────────────────────────────────────
+    max_retries: 6
+    approach_height_offset: 100.0
+    camera_settle_time: 1.0
+    capture_timeout: 10.0
+    camera_poll_interval: 0.5
+    camera_claim_delay: 0.1
+    gripper_settle_time: 2.0
+    sensor_poll_interval: 0.2
+
+    # ── Modbus server ────────────────────────────────────────
+    modbus_host: localhost
+    modbus_port: 1502
+
+    # ── Dice pose (R2 rotation setdown surface) ──────────────
+    # R2 always places the die here for each rotation attempt and
+    # re-picks from the same spot.  Must be a stable flat surface
+    # within R2's reach — NOT on the conveyor belt.
+    dice_x:  455.668
+    dice_y:   -3.726
+    dice_z: -181.552
+    dice_w:  177.775
+    dice_p:   -0.535
+    dice_r: -152.965
+
+    # ── Camera inspection pose ───────────────────────────────
+    camera_x:  483.417
+    camera_y: 1037.056
+    camera_z:  874.447
+    camera_w:   88.226
+    camera_p:  -62.245
+    camera_r:  179.623
+
+    # ── Conveyor pickup pose (end of the ODD belt) ───────────
+    conveyor_pickup_x: -192.767
+    conveyor_pickup_y: 668.535
+    conveyor_pickup_z:   14.681
+    conveyor_pickup_w:  179.611
+    conveyor_pickup_p:    0.075
+    conveyor_pickup_r:  117.298
+
+    # ── Conveyor drop pose (end of the EVEN belt) ────────────
+    conveyor_drop_x:  146.401
+    conveyor_drop_y:  668.535
+    conveyor_drop_z:   14.681
+    conveyor_drop_w:  179.611
+    conveyor_drop_p:    0.075
+    conveyor_drop_r:  117.298
+
+    # ── Gripper (Schunk, threshold in mm) ────────────────────
+    # R2 uses the Schunk gripper — width >= gripper_open_width → 'open',
+    # otherwise 'close'.  Force is ignored by the Schunk driver.
+    gripper_open_width:  120.0
+    gripper_close_width:  75.0  # ← CALIBRATE to dice size
+    gripper_force:        30.0
+
+    # ── Home joint pose (deg) ────────────────────────────────
+    home_j1:   0.0
+    home_j2:   0.0
+    home_j3:   0.0
+    home_j4:   0.0
+    home_j5: -90.0
+    home_j6:   0.0

@@ -1,4 +1,10 @@
-build/*
-install/*
-log/*
+# ROS2 build artifacts
+build/
+install/
+log/
 
+# Machine-specific robot config — copy .env.example → .env and fill in values
+.env
+
+# Editor
+.vscode/

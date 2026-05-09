@@ -1,0 +1,107 @@
+# ============================================================
+# Robot 1 (bunsen) — Rotation Step Sequences
+# ============================================================
+# Each sequence ends with the robot holding the die (last step is a
+# pick or move), ready to move directly to the camera inspection pose.
+#
+# Step types:
+#   move  — move to Cartesian waypoint while holding the die
+#   place — approach above, lower, OPEN gripper, lift clear
+#   pick  — approach above, lower, CLOSE gripper, lift up
+#
+# All coordinates: [X, Y, Z, W, P, R]  (mm / degrees, robot user-frame)
+# travel_z is added to Z for every approach/depart in place and pick steps.
+#
+# To calibrate: jog the robot to each position on the teach pendant,
+# read the Cartesian readout, and update the values below.
+# ============================================================
+
+travel_z: 100.0   # mm clearance above any place/pick Z when approaching/departing
+
+sequences:
+
+  # ── Direct rotations ────────────────────────────────────────────────────────
+
+  roll_forward:
+    # Robot arrives holding die with camera-pose WPR (W=156.453, P=89.329, R=65.890)
+    - [move,  [669.417, -260.224,  -26.122,  156.453,  89.329,  65.890]]   # approach roll area, maintain camera-pose WPR
+    - [place, [669.417, -260.224, -142.992,  156.453,  89.329,  65.890]]   # set die at roll area — WPR tips die; die rolls to pick location
+    - [move,  [669.417, -260.224,  -26.122,  156.453,  89.329,  65.890]]   # lift above roll area before moving sideways
+    - [pick,  [669.417, -365.535,  -60.608, -177.805,  -1.434,  87.403]]   # pick with neutral wrist — die now in rolled orientation
+    - [move,  [669.417, -365.535,   33.000, -177.805,  -1.434,  87.403]]   # lift above pick location — sequence ends holding die
+
+  spin_ccw:
+    # 1. pick from spin area (neutral wrist)
+    # 2. rotate wrist CCW while holding die
+    # 3. place at spun angle, return to neutral, re-pick, place at rest
+    - [move,  [669.417, -260.224,  -26.122,  156.453,  89.329,  65.890]]
+    - [place, [669.417, -260.224, -142.992,  156.453,  89.329,  65.890]]
+    - [move,  [669.417, -260.224,  -26.122,  156.453,  89.329,  65.890]]   # lift above roll area before moving sideways
+    - [pick,  [667.497, -348.564,  -77.243, -177.384,  -1.816,  89.122]]   # pick die from spin area
+    - [move,  [659.287, -359.247,   54.268,  178.150,   2.760, -177.932]]  # rotate wrist CCW while holding die (R: 89→-178)
+    - [place, [667.497, -348.564,  -77.243, -179.744,   -0.037, -171.821]] # place at CCW-spun WPR
+    - [move,  [659.287, -359.247,   54.268, -177.384,  -1.816,  89.122]]   # return wrist to neutral (avoids joint limit)
+    - [pick,  [667.497, -348.564,  -77.243, -177.384,  -1.816,  89.122]]   # pick with neutral wrist — die now spun CCW; sequence ends holding die
+
+  spin_cw:
+    - [move,  [669.417, -260.224,  -26.122,  156.453,  89.329,  65.890]]   # approach roll area, maintain camera-pose WPR
+    - [place, [669.417, -260.224, -142.992,  156.453,  89.329,  65.890]]   # set die at roll area — WPR tips die; die rolls to pick location
+    - [move,  [669.417, -260.224,  -26.122,  156.453,  89.329,  65.890]]   # lift above roll area before moving sideways
+    - [move,  [703.334, -365.535,   43.832, -177.805,  -1.434,  87.403]] 
+    - [pick,  [667.497, -348.564,  -77.243, -177.384,  -1.816,  89.122]]   # pick die from spin area
+    - [move,  [659.287, -359.247,   54.268, -178.054,   2.526,   2.029]]   # rotate wrist CW while holding die (R: 89→2)
+    - [place, [667.497, -348.564,  -77.243, -179.744,   -0.037,   3.775]]  # place at CW-spun WPR
+    - [move,  [659.287, -359.247,   54.268, -178.054,   2.526,   2.029]]   # lift arm clear of die
+    - [pick,  [667.497, -348.564,  -77.243, -177.384,  -1.816,  89.122]]   # pick with neutral wrist — die now spun CW; sequence ends holding die
+
+  # ── Compound rotations (expanded from primitives above) ─────────────────────
+  # roll_right  = spin_ccw + roll_forward  (left  face → front → top)
+  # roll_left   = spin_cw  + roll_forward  (right face → front → top)
+  # roll_backward = spin_ccw + spin_ccw + roll_forward  (180° Z spin + roll)
+
+  roll_right:
+    # spin_ccw portion — ends with pick (die in hand), no rest-place so gripper stays closed
+    - [move,  [669.417, -260.224,  -26.122,  156.453,  89.329,  65.890]]
+    - [place, [669.417, -260.224, -142.992,  156.453,  89.329,  65.890]]
+    - [pick,  [669.417, -363.909,  -77.243,  177.384,  -1.816,  89.122]]   # pick die from spin area
+    - [move,  [669.417, -363.909,   54.268,  178.424,   -1.261, -179.895]]  # rotate wrist CCW while holding die (R: 89→-178)
+    - [place, [669.417, -363.909,  -77.243, 178.424,   -1.261, -179.895]] # place at CCW-spun WPR
+    - [pick,  [669.417, -363.909,  -77.243, 177.384,  -1.816,  89.122]]   # pick with neutral wrist — die now spun CCW; robot still holding die
+    # roll_forward portion (8 steps)
+    - [move,  [669.417, -260.224,  -26.122,  156.453,  89.329,  65.890]]   # approach roll area, maintain camera-pose WPR
+
+
+  roll_left:
+    # spin_cw (6 steps)
+    - [move,  [669.417, -260.224,  -26.122,  156.453,  89.329,  65.890]]   # approach roll area, maintain camera-pose WPR
+    - [place, [669.417, -260.224, -142.992,  156.453,  89.329,  65.890]]   # set die at roll area — WPR tips die; die rolls to pick location
+    - [pick,  [669.417, -363.909,  -77.243,  177.384,  -1.816,  89.122]]   # pick die from spin area
+    - [move,  [669.417, -363.909,   54.268,  179.469,   -1.293,   -0.176]]   # rotate wrist CW while holding die (R: 89→2)
+    - [place, [669.417, -363.909,  -77.243, 179.469,   -1.293,   -0.176]]  # place at CW-spun WPR
+    - [pick,  [669.417, -363.909,  -77.243,  177.384,  -1.816,  89.122]]   # pick with neutral wrist — die now spun CW 
+    # roll_forward (8 steps)
+    - [move,  [669.417, -260.224,  -26.122,  156.453,  89.329,  65.890]]   # approach roll area, maintain camera-pose WPR
+
+
+  roll_backward:
+    # spin_ccw (6 steps)
+    - [move,  [669.417, -260.224,  -26.122,  156.453,  89.329,  65.890]]
+    - [place, [669.417, -260.224, -142.992,  156.453,  89.329,  65.890]]
+    - [move,  [669.417, -260.224,  -26.122,  156.453,  89.329,  65.890]]   # lift above roll area before moving sideways
+    - [pick,  [667.497, -348.564,  -77.243, -177.384,  -1.816,  89.122]]   # pick die from spin area
+    - [move,  [659.287, -359.247,   54.268,  178.150,   2.760, -177.932]]  # rotate wrist CCW while holding die (R: 89→-178)
+    - [place, [667.497, -348.564,  -77.243, -179.744,   -0.037, -171.821]] # place at CCW-spun WPR
+    - [move,  [659.287, -359.247,   54.268, -177.384,  -1.816,  89.122]]   # return wrist to neutral (avoids joint limit)
+    - [pick,  [667.497, -348.564,  -77.243, -177.384,  -1.816,  89.122]]   # pick with neutral wrist — die now spun CCW
+    # spin_ccw again (6 steps = 180° total Z rotation)
+    - [move,  [669.417, -260.224,  -26.122,  156.453,  89.329,  65.890]]
+    - [place, [669.417, -260.224, -142.992,  156.453,  89.329,  65.890]]
+    - [move,  [669.417, -260.224,  -26.122,  156.453,  89.329,  65.890]]   # lift above roll area before moving sideways
+    - [pick,  [667.497, -348.564,  -77.243, -177.384,  -1.816,  89.122]]   # pick die from spin area
+    - [move,  [659.287, -359.247,   54.268,  178.150,   2.760, -177.932]]  # rotate wrist CCW while holding die (R: 89→-178)
+    - [place, [667.497, -348.564,  -77.243, -179.744,   -0.037, -171.821]] # place at CCW-spun WPR
+    - [pick,  [667.497, -348.564,  -77.243, -177.384,  -1.816,  89.122]]   # pick with neutral wrist — die now spun CCW
+    # roll_forward (8 steps)
+    - [move,  [669.417, -260.224,  -26.122,  156.453,  89.329,  65.890]]   # approach roll area, maintain camera-pose WPR
+ # lift above roll area before moving sideways
+

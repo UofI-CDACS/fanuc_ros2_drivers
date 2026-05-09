@@ -1,0 +1,88 @@
+# ============================================================
+# Robot 2 (beaker) — Rotation Step Sequences
+# ============================================================
+# Each sequence ends holding the die (last step is a pick or move).
+#
+# Jog the robot to each position on the teach pendant, read the
+# Cartesian readout (POSN > USER), and replace the placeholder
+# values below.
+#
+# Gripper note: Robot 2 uses the Schunk gripper.
+#   place steps → 'open'  (width >= gripper_open_width)
+#   pick  steps → 'close' (width <  gripper_open_width)
+# The node handles this automatically — no changes needed here.
+#
+# Step types:
+#   move  — move to Cartesian waypoint while holding the die
+#   place — approach above, lower, OPEN gripper, lift clear
+#   pick  — approach above, lower, CLOSE gripper, lift up
+#
+# All coordinates: [X, Y, Z, W, P, R]  (mm / degrees, robot user-frame)
+# ============================================================
+
+travel_z: 80.0   # mm clearance above any place/pick Z — CALIBRATE if needed
+
+sequences:
+
+  # ── Direct rotations ────────────────────────────────────────────────────────
+  # Replace all coordinate values with Robot 2's calibrated positions.
+
+  roll_forward:  # ← CALIBRATE: approach roll area
+    - [place, [483.417, 374.466, -129.889, 88.209, -62.211, 179.652]]   # ← CALIBRATE: set die at roll area
+    - [move,  [483.417, 374.466, -29.0, 88.209, -62.211, 179.652]]   # ← CALIBRATE: lift above roll area
+    - [move,  [481.785, 392.418, -68.805, 179.003, 0.774, 114.487]]   # ← CALIBRATE: above rolled-die location
+    - [pick,  [481.785, 392.418, -121.029, 179.003, 0.774, 114.487]]   # ← CALIBRATE: pick with neutral wrist
+    - [move,  [481.785, 392.418, -68.805, 179.003, 0.774, 114.487]]   # ← CALIBRATE: lift above pick location — sequence ends holding die
+
+  spin_ccw:
+    - [pick,  [481.785, 392.418, -121.029, 179.003, 0.774, 114.487]]   # ← CALIBRATE: pick from spin area
+    - [move,  [481.785, 392.418, -60.029, 179.003, 0.774, -151.826]]   # ← CALIBRATE: rotate wrist CCW
+    - [place, [481.785, 392.418, -121.029, 179.003, 0.774, -151.826]]   # ← CALIBRATE: place at CCW-spun WPR
+    - [move,  [481.785, 392.418, -60.029, 179.003, 0.774, 114.487]]   # ← CALIBRATE: return wrist to neutral
+    - [pick,  [481.785, 392.418, -121.029, 179.003, 0.774, 114.487]]   # ← CALIBRATE: pick with neutral wrist — sequence ends holding die
+
+  spin_cw:
+    - [pick,  [481.785, 392.418, -121.029, 179.003, 0.774, 114.487]]   # ← CALIBRATE: pick from spin area
+    - [move,  [481.785, 392.418, -60.029, 179.003, 0.774, 21.473]]   # ← CALIBRATE: rotate wrist CW
+    - [place, [481.785, 392.418, -121.029, 179.003, 0.774, 21.473]]   # ← CALIBRATE: place at CW-spun WPR
+    - [pick,  [481.785, 392.418, -121.029, 179.003, 0.774, 114.487]]   # ← CALIBRATE: pick with neutral wrist — sequence ends holding die
+
+  # ── Compound rotations (update after calibrating the primitives above) ───────
+
+  roll_right:
+    # spin_ccw (6 steps) — copy from spin_ccw above after calibrating
+    - [move,  [481.785, 392.418, -60.029, 179.003, 0.774, -151.826]]   # ← CALIBRATE: rotate wrist CCW
+    - [place, [481.785, 392.418, -121.029, 179.003, 0.774, -151.826]]   # ← CALIBRATE: place at CCW-spun WPR
+    - [pick,  [481.785, 392.418, -121.029, 179.003, 0.774, 114.487]]   # ← CALIBRATE: pick with neutral wrist
+    - [place, [481.785, 392.418, -121.029, 179.003, 0.774, 114.487]]
+    - [pick,  [481.785, 392.418, -121.029, 179.003, 0.774, 114.487]] 
+    # roll_forward (8 steps) — copy from roll_forward above after calibrating
+    - [move,  [481.785, 392.418, -60.0, 88.209, -62.211, 179.652]]   # ← CALIBRATE: approach roll area
+
+  roll_left:
+    # spin_cw (6 steps)
+    - [move,  [481.785, 392.418, -60.029, 179.003, 0.774, -151.826]]   # ← CALIBRATE: rotate wrist CCW
+    - [place, [481.785, 392.418, -121.029, 179.003, 0.774, -151.826]]   # ← CALIBRATE: place at CCW-spun WPR
+    - [pick,  [481.785, 392.418, -121.029, 179.003, 0.774, 114.487]]   # ← CALIBRATE: pick with neutral wrist
+    - [place, [481.785, 392.418, -121.029, 179.003, 0.774, 114.487]] 
+    - [pick,  [481.785, 392.418, -121.029, 179.003, 0.774, 114.487]] 
+    # roll_forward (8 steps)
+    - [move,  [481.785, 392.418, -60.0, 88.209, -62.211, 179.652]]   # ← CALIBRATE: approach roll area
+
+  roll_backward:
+    # spin_ccw + spin_ccw + roll_forward (20 steps total)
+    # spin_ccw #1
+    - [move,  [481.785, 392.418, -60.029, 179.003, 0.774, -151.826]]   # ← CALIBRATE: rotate wrist CCW
+    - [place, [481.785, 392.418, -121.029, 179.003, 0.774, -151.826]]   # ← CALIBRATE: place at CCW-spun WPR
+    - [pick,  [481.785, 392.418, -121.029, 179.003, 0.774, 114.487]]   # ← CALIBRATE: pick with neutral wrist
+    - [place, [481.785, 392.418, -121.029, 179.003, 0.774, 114.487]]
+    - [pick,  [481.785, 392.418, -121.029, 179.003, 0.774, 114.487]] 
+    # spin_ccw #2
+    - [move,  [481.785, 392.418, -60.029, 179.003, 0.774, -151.826]]   # ← CALIBRATE: rotate wrist CCW
+    - [place, [481.785, 392.418, -121.029, 179.003, 0.774, -151.826]]   # ← CALIBRATE: place at CCW-spun WPR
+    - [pick,  [481.785, 392.418, -121.029, 179.003, 0.774, 114.487]]   # ← CALIBRATE: pick with neutral wrist
+    - [place, [481.785, 392.418, -121.029, 179.003, 0.774, 114.487]]
+    - [pick,  [481.785, 392.418, -121.029, 179.003, 0.774, 114.487]] 
+    # roll_forward
+    - [move,  [481.785, 392.418, -60.0, 88.209, -62.211, 179.652]]   # ← CALIBRATE: approach roll area
+

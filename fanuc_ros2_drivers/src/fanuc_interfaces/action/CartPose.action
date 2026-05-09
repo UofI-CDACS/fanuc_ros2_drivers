@@ -1,0 +1,18 @@
+#Goal
+# Send cartesian coordinates to robot in reference to tool end effectors position
+
+# Coordinates
+float32 x
+float32 y
+float32 z
+# Yaw, Pitch, Roll. Should be in the range of [-179.0, 179.0]
+# If default value is not changed it will maintain current WPR
+float32 w 200.0
+float32 p 200.0
+float32 r 200.0
+---
+#Result
+bool success
+---
+#Feedback
+float32[] distance_left
