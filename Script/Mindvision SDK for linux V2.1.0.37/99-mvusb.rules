@@ -1,0 +1,2 @@
+# udev rules file for usb camera, ubuntu20
+SUBSYSTEM=="usb", ATTR{idVendor}=="f622", MODE="666", GROUP="mvusb_dev"

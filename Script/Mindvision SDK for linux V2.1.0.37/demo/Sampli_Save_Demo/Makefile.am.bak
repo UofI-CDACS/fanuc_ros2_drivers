@@ -1,0 +1,10 @@
+AUTOMAKE_OPTIONS=foreign
+bin_PROGRAMS=demo
+demo_SOURCES=main.cpp  
+demo_LDFLAGS= -L../../lib/gcc-4.4.3/
+#demo_LDFLAGS= -L../../lib/arm-4.5.1/lib/
+#demo_LDFLAGS= -L../../lib/arm/gcc-4.3.3/lib
+#demo_LDFLAGS= -L../../lib/arm-raspbian/lib
+#demo_LDFLAGS = -fPIC -shared
+INCLUDES=-I./inc   -I../../include 
+demo_LDADD =  -lpthread  -lrt    $(INTLLIBS) -lMVSDK

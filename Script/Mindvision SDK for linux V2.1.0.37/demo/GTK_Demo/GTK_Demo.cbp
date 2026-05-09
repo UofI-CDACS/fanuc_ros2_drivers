@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="GTK_Demo" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="GTK_Demo" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+					<Add option="`pkg-config gtk+-2.0 --cflags`" />
+					<Add directory="inc" />
+					<Add directory="../../include" />
+				</Compiler>
+				<Linker>
+					<Add option="-lrt" />
+					<Add option="-pthread" />
+					<Add option="`pkg-config gtk+-2.0 --libs`" />
+					<Add library="MVSDK" />
+					<Add directory="../../test/test2/bin/Debug" />
+				</Linker>
+			</Target>
+			<Target title="Release">
+				<Option output="GTK_Demo" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="`pkg-config gtk+-2.0 --cflags`" />
+					<Add directory="inc" />
+					<Add directory="../../include" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+					<Add option="-lrt" />
+					<Add option="-pthread" />
+					<Add option="`pkg-config gtk+-2.0 --libs`" />
+					<Add library="MVSDK" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add option="`pkg-config gtk+-2.0 --cflags`" />
+			<Add directory="../../include" />
+		</Compiler>
+		<Linker>
+			<Add option="`pkg-config gtk+-2.0 --libs`" />
+		</Linker>
+		<Unit filename="GTK_demo.cpp" />
+		<Unit filename="inc/Demo.h" />
+		<Unit filename="inc/callbacks.h" />
+		<Unit filename="inc/interface.h" />
+		<Unit filename="inc/support.h" />
+		<Unit filename="src/Demo.cpp" />
+		<Unit filename="src/callbacks.cpp" />
+		<Unit filename="src/interface.cpp" />
+		<Unit filename="src/support.cpp" />
+		<Extensions>
+			<code_completion />
+			<debugger />
+			<envvars />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>
