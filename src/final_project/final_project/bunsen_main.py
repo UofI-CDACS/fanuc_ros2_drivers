@@ -87,7 +87,8 @@ TABLE_PLACE_ABOVE = dict(joint1=-42.010, joint2=20.282, joint3=.918, joint4=-1.8
 TABLE_PLACE_DOWN  = dict(joint1=-42.015, joint2=31.966, joint3=-39.884, joint4=-2.453, joint5=-50.084, joint6=-46.540)
 
 # Re-grip position — approach die on table from a different angle to expose other faces
-TABLE_REPOS_1 = dict(joint1=-42.142, joint2=31.965, joint3=-39.884, joint4=-3.262, joint5=-49.758, joint6=-133.223)
+TABLE_REPOS_1       = dict(joint1=-42.142, joint2=31.965, joint3=-39.884, joint4=-3.262, joint5=-49.758, joint6=-133.223)
+TABLE_REPOS_1_ABOVE = dict(joint1=0.0, joint2=0.0, joint3=0.0, joint4=0.0, joint5=0.0, joint6=0.0)    # CALIBRATE — lift after REPOS_1 grip before rotating away
 TABLE_REPOS_2 = dict(joint1=-28.210, joint2=69.225, joint3=-47.417, joint4=32.772, joint5=-119.359, joint6=-156.490)
 TABLE_REPOS_3 = dict(joint1=-28.898, joint2=61.730, joint3=-43.216, joint4=35.709, joint5=-121.764, joint6=-145.216)
 TABLE_REPOS_PICK = dict(joint1=-42.015, joint2=31.304, joint3=-38.739, joint4=-2.413, joint5=-51.228, joint6=39.646)
@@ -97,8 +98,14 @@ FRONT_CONV_ABOVE  = dict(joint1=-62.667, joint2=13.088, joint3=-25.034, joint4=-
 FRONT_CONV_PLACE  = dict(joint1=-64.747, joint2=15.950, joint3=-33.644, joint4=-1.767, joint5=-57.065, joint6=-23.823)
 
 # Final placement — pip 6, placed in front of Bunsen for display
-FINAL_PLACE_ABOVE = dict(joint1=18.885, joint2=-3.830, joint3=-27.348, joint4=0.106, joint5=-62.685, joint6=-18.934)
-FINAL_PLACE_DOWN  = dict(joint1=18.885, joint2=16.454, joint3=-64.706, joint4=0.221, joint5=-25.327, joint6=-19.085)
+FINAL_PLACE_ABOVE = dict(joint1=18.885, joint2=-3.830,  joint3=-27.348, joint4=0.106,  joint5=-62.685,  joint6=-18.934)
+FINAL_PLACE_DOWN  = dict(joint1=18.885, joint2=16.454,  joint3=-64.706, joint4=0.221,  joint5=-25.327,  joint6=-19.085)
+
+# Chirality reposition poses (used by _face_rotate) — same XY as FINAL_PLACE_DOWN, only joint6 differs
+# FACE_ROTATE_MID: wrist CW 90° at table level (joint6: -19°→-106°). left face comes to front.
+FACE_ROTATE_MID   = dict(joint1=18.061, joint2=16.056,  joint3=-65.049, joint4=0.217,  joint5=-24.269,  joint6=-106.040)
+# FACE_ROTATE: arm forward and angled down — gripper approaches die from its front face to tip it.
+FACE_ROTATE       = dict(joint1=9.743,  joint2=64.697,  joint3=-61.031, joint4=-10.561, joint5=-116.591, joint6=-5.378)
 
 # ---------------------------------------------------------------------------
 # Standard western die chirality
@@ -125,6 +132,21 @@ def _chirality_j6_steps(face_pose1: int, face_pose2: int, target: int):
     """
     roll = [face_pose1, face_pose2, 7 - face_pose1, 7 - face_pose2]
     return roll.index(target) if target in roll else None
+
+
+def _all_faces_from_two(top: int, front: int) -> set:
+    """
+    Given the top face and one visible side face, use the chirality table to
+    derive all six face values and their positions: top, bottom, front, back,
+    right, left.  Returns a set of all six pip values (should always be {1..6}).
+    """
+    right   = _DIE_CHIRALITY.get((top, front))
+    if right is None:
+        return set()
+    bottom  = 7 - top
+    back    = 7 - front
+    left    = 7 - right
+    return {top, bottom, front, back, right, left}
 
 
 # ===========================================================================
@@ -306,17 +328,106 @@ def _make_node():
                 print('  Enter a number 1-6.')
 
         def _capture_pip(self, position: str = 'position') -> int:
-            """Grab a frame and count pips; falls back to manual prompt if camera unavailable."""
+            """Grab a frame and count pips; retries on 0, falls back to manual."""
             if self._camera is None or self._camera.hCamera is None:
                 return self._ask_pip_manual(position)
-            try:
-                frame = self._camera.getFrame()
-                pips = count_pips(frame)
-                self.get_logger().info(f'Camera ({position}): {pips} pip(s)')
-                return pips
-            except Exception as e:
-                self.get_logger().warn(f'Camera error at {position}: {e} — manual input')
-                return self._ask_pip_manual(position)
+            for attempt in range(3):
+                try:
+                    frame = self._camera.getFrame()
+                    pips = count_pips(frame)
+                    if pips > 0:
+                        self.get_logger().info(f'Camera ({position}): {pips} pip(s)')
+                        return pips
+                    self.get_logger().warn(
+                        f'Camera ({position}): 0 pips detected (attempt {attempt + 1}/3)')
+                    time.sleep(0.3)
+                except Exception as e:
+                    self.get_logger().warn(f'Camera error at {position}: {e}')
+                    break
+            self.get_logger().warn(f'Camera returned 0 at {position} after retries — manual input')
+            return self._ask_pip_manual(position)
+
+        # ====================================================================
+        # Chirality-guided die reposition
+        # ====================================================================
+
+        def _face_rotate(self, where: str):
+            """Minimum-move reposition bringing target face to a camera-visible position.
+
+            Call with robot at FINAL_PLACE_ABOVE holding die.
+            Returns with robot at FINAL_PLACE_ABOVE, gripper open, die on table.
+
+            FRM: lower to FINAL_PLACE_DOWN while gripping → rotate wrist CW 90°
+                 (FACE_ROTATE_MID, joint6: -19→-106°) at table level → release.
+                 Effect: left face → front face.
+
+            FR:  move to FACE_ROTATE (arm forward/low, gripper at die's front face) →
+                 close gripper → drag arm to FINAL_PLACE_DOWN (tips die: front→top,
+                 back→bottom) → release.
+                 Gripper closes ONLY here, never in FRM or place.
+
+            Sequences per target face:
+              left  → FRM            (1 step)  left→front          visible at VIEW 1
+              back  → FR             (1 step)  back→bottom         visible at VIEW 2
+              right → FRM + FR       (2 steps) right→back→bottom   visible at VIEW 2
+              top   → FR + FR        (2 steps) top→back→bottom     visible at VIEW 2
+            """
+            def _above():
+                # lift arm to safe height above final place, arm pointing straight down
+                self._move(**FINAL_PLACE_ABOVE)
+                time.sleep(GRIPPER_SETTLE_SECS)
+
+            def _frm():
+                # lower onto die while gripping, rotate wrist CW 90° at table level, release
+                print('  [face_rotate] FINAL_PLACE_DOWN')
+                self._move(**FINAL_PLACE_DOWN)    # lower arm straight down onto die, still gripping
+                time.sleep(GRIPPER_SETTLE_SECS)
+                print('  [face_rotate] FACE_ROTATE_MID — wrist CW 90° (joint6: -19→-106°)')
+                self._move(**FACE_ROTATE_MID)     # same XYZ as FPD, just joint6 rotated — die rotates on table
+                time.sleep(GRIPPER_SETTLE_SECS)
+                print('  [face_rotate] open gripper')
+                self._open_gripper()              # release die at table level in rotated orientation
+                time.sleep(GRIPPER_SETTLE_SECS)
+                _above()                          # lift arm up; die stays on table
+
+            def _place():
+                # place held die on table without changing its orientation (prep for _fr)
+                print('  [face_rotate] FINAL_PLACE_DOWN (place)')
+                self._move(**FINAL_PLACE_DOWN)    # lower arm straight down to table level
+                time.sleep(GRIPPER_SETTLE_SECS)
+                print('  [face_rotate] open gripper')
+                self._open_gripper()              # release die — orientation unchanged
+                time.sleep(GRIPPER_SETTLE_SECS)
+                _above()                          # retract straight up
+
+            def _fr():
+                # grip die from front angle, drag arm to vertical — tips die (back→bottom)
+                print('  [face_rotate] FACE_ROTATE — arm forward/low, gripper at die front face')
+                self._move(**FACE_ROTATE)         # arm swings forward and angled down; gripper above die's front face
+                time.sleep(GRIPPER_SETTLE_SECS)
+                print('  [face_rotate] close gripper')
+                self._close_gripper()             # grip die from front-face angle while on table
+                time.sleep(GRIPPER_SETTLE_SECS)
+                print('  [face_rotate] FINAL_PLACE_DOWN (tip die)')
+                self._move(**FINAL_PLACE_DOWN)    # drag arm back to vertical — levers die forward (front→top, back→bottom)
+                time.sleep(GRIPPER_SETTLE_SECS)
+                print('  [face_rotate] open gripper')
+                self._open_gripper()              # release die at table level in tipped orientation
+                time.sleep(GRIPPER_SETTLE_SECS)
+                _above()                          # lift arm up
+
+            print(f'  [face_rotate] target on {where}')
+            if where == 'left':
+                _frm()                  # left → front (VIEW 1 visible)
+            elif where == 'back':
+                _place(); _fr()         # back → bottom (VIEW 2 visible)
+            elif where == 'right':
+                _frm(); _fr()           # right → back → bottom (VIEW 2 visible)
+            elif where == 'top':
+                _place(); _fr(); _fr()  # top → back → bottom (VIEW 2 visible)
+            else:
+                self.get_logger().warn(f'face_rotate: unknown face "{where}" — FRM+FR fallback')
+                _frm(); _fr()
 
         # ====================================================================
         # State: SETUP
@@ -428,24 +539,23 @@ def _make_node():
 
             self._mb_write_coil(COIL_CAMERA_CLIENT, True)
 
-            def _check_two_views(label_a, label_b):
-                ok1 = self._move(**CAM_POSE_1)
-                print(f'  [PipCount] CAM_POSE_1 {"OK" if ok1 else "FAILED/UNREACHABLE"}')
+            def _two_views():
+                # VIEW 1 (CAM_POSE_1): front face visible to camera
+                self._move(**CAM_POSE_1)
                 time.sleep(CAMERA_SETTLE_SECS)
-                fa = self._capture_pip(label_a)
-                print(f'  [PipCount] {label_a} → {fa} pip(s)')
+                v1 = self._capture_pip('VIEW 1')
+                print(f'  [PipCount] VIEW 1 (front) → {v1}')
 
-                ok2 = self._move(**CAM_POSE_2)
-                print(f'  [PipCount] CAM_POSE_2 {"OK" if ok2 else "FAILED/UNREACHABLE"}')
+                # VIEW 2 (CAM_POSE_2): bottom face visible to camera → top = 7 - v2
+                self._move(**CAM_POSE_2)
                 time.sleep(CAMERA_SETTLE_SECS)
-                fb = self._capture_pip(label_b)
-                print(f'  [PipCount] {label_b} → {fb} pip(s)')
+                v2 = self._capture_pip('VIEW 2')
+                print(f'  [PipCount] VIEW 2 (bottom) → {v2}  (top: {7 - v2})')
 
                 self._move(**CAM_POSE_1)
-                return fa, fb
+                return v1, v2
 
             def _place_die():
-                # Place die on table from current hold position
                 self._move(**TABLE_PLACE_ABOVE)
                 time.sleep(GRIPPER_SETTLE_SECS)
                 self._move(**TABLE_PLACE_DOWN)
@@ -456,17 +566,19 @@ def _make_node():
                 time.sleep(GRIPPER_SETTLE_SECS)
 
             def _regrip():
-                # Die is already on table, robot is at TABLE_PLACE_ABOVE
+                # Die is on table at TABLE_PLACE_ABOVE; reorient and repick
                 self._open_gripper()
                 time.sleep(GRIPPER_SETTLE_SECS)
                 self._move(**TABLE_REPOS_1)
                 time.sleep(GRIPPER_SETTLE_SECS)
                 self._close_gripper()
                 time.sleep(GRIPPER_SETTLE_SECS)
+                self._move(**TABLE_REPOS_1_ABOVE)
+                time.sleep(GRIPPER_SETTLE_SECS)
                 self._move(**TABLE_PLACE_ABOVE)
                 time.sleep(GRIPPER_SETTLE_SECS)
                 self._move(**TABLE_REPOS_3)
-                time.sleep(GRIPPER_SETTLE_SECS)
+                time.sleep(3.0)
                 self._move(**TABLE_REPOS_2)
                 time.sleep(GRIPPER_SETTLE_SECS)
                 self._open_gripper()
@@ -478,40 +590,66 @@ def _make_node():
                 self._move(**TABLE_PLACE_ABOVE)
                 time.sleep(GRIPPER_SETTLE_SECS)
 
-            # Attempt 1
-            face1, face2 = _check_two_views('VIEW 1', 'VIEW 2')
-            if target in (face1, face2):
-                print(f'  [PipCount] Found pip {target} (attempt 1) — proceeding.')
-                self._mb_write_coil(COIL_CAMERA_CLIENT, False)
-                self._move(**CONVEYOR_WAIT_POSE)
-                self._set_state(STATE_FINISH if target == 6 else STATE_PLACE_DIE)
-                return
-            print(f'  [PipCount] Attempt 1: not found — placing die to re-grip...')
-            time.sleep(CAMERA_SETTLE_SECS)
-            _place_die()
-            _regrip()
+            # Chirality loop — same strategy as Beaker's _find_pip_rotating
+            attempt = 0
+            while True:
+                attempt += 1
+                print(f'  [PipCount] chirality attempt {attempt}')
 
-            # Attempt 2
-            face3, face4 = _check_two_views('VIEW 1', 'VIEW 2')
-            if target in (face3, face4):
-                print(f'  [PipCount] Found pip {target} (attempt 2) — proceeding.')
-                self._mb_write_coil(COIL_CAMERA_CLIENT, False)
-                self._move(**CONVEYOR_WAIT_POSE)
-                self._set_state(STATE_FINISH if target == 6 else STATE_PLACE_DIE)
-                return
+                front_pip, bottom_pip = _two_views()
+                top_pip = 7 - bottom_pip
 
-            # Attempt 3 — regrip again
-            print(f'  [PipCount] pip {target} not found — placing die to re-grip (attempt 3)...')
-            time.sleep(CAMERA_SETTLE_SECS)
-            _place_die()
-            _regrip()
-            face5, face6 = _check_two_views('VIEW 1', 'VIEW 2')
-            if target not in (face5, face6):
-                print(f'  [PipCount] pip {target} not found on any of 6 faces — sending anyway.')
-                self._bunsen_retries += 1
-                self._mb_write(REG_RETRIES, self._bunsen_retries)
-            else:
-                print(f'  [PipCount] Found pip {target} — proceeding.')
+                # Direct hit
+                if target in (front_pip, bottom_pip):
+                    print(f'  [PipCount] pip {target} visible — done.')
+                    break
+
+                # Derive all six faces from chirality table
+                right_pip = _DIE_CHIRALITY.get((top_pip, front_pip))
+                if right_pip is not None:
+                    back_pip, left_pip = 7 - front_pip, 7 - right_pip
+                    face_map = {
+                        'front':  front_pip,  'back':   back_pip,
+                        'top':    top_pip,    'bottom': bottom_pip,
+                        'right':  right_pip,  'left':   left_pip,
+                    }
+                    target_face = next((f for f, v in face_map.items() if v == target), None)
+                    print(f'  [PipCount] All faces: {face_map}')
+                    print(f'  [PipCount] pip {target} on {target_face} face')
+                else:
+                    print(f'  [PipCount] ({top_pip},{front_pip}) invalid orientation')
+                    target_face = None
+
+                if attempt >= MAX_PIP_RETRIES:
+                    print(f'  [PipCount] pip {target} not found after {attempt} attempts — sending anyway.')
+                    self._bunsen_retries += 1
+                    self._mb_write(REG_RETRIES, self._bunsen_retries)
+                    break
+
+                # Odd attempts: chirality-guided face_rotate (minimum moves).
+                # Even attempts: brute-force place + regrip (random reorient).
+                if attempt % 2 == 1 and target_face not in (None, 'front', 'bottom'):
+                    print(f'  [PipCount] face_rotate: pip {target} is on {target_face} face')
+                    # Transit from cam area (CAM_POSE_1) to final position holding die
+                    self._move(**CONVEYOR_WAIT_POSE)
+                    time.sleep(GRIPPER_SETTLE_SECS)
+                    self._move(**FINAL_PLACE_ABOVE)   # position above reposition spot, still holding die
+                    time.sleep(GRIPPER_SETTLE_SECS)
+                    self._face_rotate(target_face)    # reorient; ends at FINAL_PLACE_ABOVE, gripper open, die on table
+                    # Pick die back up from FINAL_PLACE in its new orientation
+                    print('  [PipCount] re-picking die after face_rotate')
+                    self._move(**FINAL_PLACE_DOWN)    # lower onto die
+                    time.sleep(GRIPPER_SETTLE_SECS)
+                    self._close_gripper()             # grip die in new orientation
+                    time.sleep(GRIPPER_SETTLE_SECS)
+                    self._move(**FINAL_PLACE_ABOVE)   # lift up
+                    time.sleep(GRIPPER_SETTLE_SECS)
+                    self._move(**CONVEYOR_WAIT_POSE)  # waypoint back toward camera area
+                    time.sleep(GRIPPER_SETTLE_SECS)
+                else:
+                    print(f'  [PipCount] regrip (pip {target} on {target_face})...')
+                    _place_die()
+                    _regrip()
 
             self._mb_write_coil(COIL_CAMERA_CLIENT, False)
             self._move(**CONVEYOR_WAIT_POSE)
